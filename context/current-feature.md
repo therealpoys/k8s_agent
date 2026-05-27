@@ -1,24 +1,33 @@
-# Current Feature
+# Current Feature: Schritt 6 — LLM Analyzer (`src/analyzer.py`)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Analyzer-Modul, das `list[Finding]` von Plugins entgegennimmt, per LLM analysiert und ein `Alert`-Objekt zurückgibt.
 
 ## Goals
 
-<!-- Add goals here -->
+- `analyze(findings)` wählt den LLM-Provider aus `config.llm_provider` (`openai`, `anthropic`, `ollama`)
+- Strukturierter Prompt fordert Severity-Einstufung, Summary und Recommendation als JSON
+- LLM-Antwort wird validiert: `severity` muss `"info"` | `"warning"` | `"critical"` sein (Fallback: `"warning"`)
+- Gibt ein vollständiges `Alert`-Objekt zurück
+- Degraded Mode bei jedem LLM-Fehler: kein Exception-Propagation, Alert mit höchstem Severity aus Findings
 
 ## Done When
 
-<!-- Add done criteria here -->
+`analyze([])` gibt ein valides `Alert`-Objekt zurück. Bei fehlender `OPENAI_API_KEY`-Umgebungsvariable läuft der Analyzer im Degraded Mode durch ohne Exception.
 
 ## Notes
 
-<!-- Add notes here -->
+- Provider-Mapping: `openai` → `ChatOpenAI`, `anthropic` → `ChatAnthropic`, `ollama` → `ChatOpenAI` mit `base_url` + `api_key="ollama"`
+- Modell: `config.llm_model`, Timeout: `config.llm_timeout`
+- API-Keys nur aus Umgebungsvariablen, nie aus `config.yaml`
+- Hilfsfunktion `_highest_severity(findings)` für Degraded Mode
+- `logging.getLogger(__name__)` — kein `print()`
+- Erlaubte Imports: `json`, `logging`, `datetime`, `src.config`, `src.models` + LangChain je Provider
 
 ## History
 
