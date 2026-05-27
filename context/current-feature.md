@@ -1,24 +1,37 @@
-# Current Feature
+# Current Feature: Schritt 7 — Console Output (`src/outputs/console.py`)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Strukturierter Console Output-Kanal für Alerts. Erstelle `src/outputs/__init__.py` (leer) und `src/outputs/console.py` mit einer `send(alert: Alert) -> None`-Funktion.
 
 ## Goals
 
-<!-- Add goals here -->
+- `src/outputs/__init__.py` (leer) und `src/outputs/console.py` existieren
+- `send(alert)` gibt den Alert lesbar via `logging.info()` aus (kein `print()`)
+- Ausgabeformat: Trennlinie, `[SEVERITY]`-Header, Timestamp als `YYYY-MM-DD HH:MM:SS UTC`, Summary, Recommendation, nummerierte Findings mit source/namespace/resource, Severity und Message (max 200 Zeichen)
+- Bei leerem `alert.findings`: Ausgabe mit "No findings" statt der Liste
+- Severity in der Überschrift in Großbuchstaben (`[WARNING]`, `[CRITICAL]`, `[INFO]`)
+- Nur erlaubte Imports: `logging` und `from src.models import Alert`
+- Kein bare `except:`, keine ANSI-Codes, keine hardcodierten Farben
 
 ## Done When
 
-<!-- Add done criteria here -->
+```python
+from src.outputs.console import send
+send(alert)
+```
+gibt einen lesbaren Alert auf der Konsole aus. Läuft ohne Fehler auch wenn `alert.findings` leer ist.
 
 ## Notes
 
-<!-- Add notes here -->
+- Datum/Uhrzeit aus `alert.generated_at` formatiert als `YYYY-MM-DD HH:MM:SS UTC`
+- Trennlinie: `━` × 50 Zeichen
+- Message auf erste 200 Zeichen kürzen
+- Einfachster Output-Kanal — kein externer Dienst nötig, erlaubt vollständiges lokales Testen
 
 ## History
 
