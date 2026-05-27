@@ -1,24 +1,32 @@
-# Current Feature
+# Current Feature: Schritt 2 — Datenmodell (`src/models.py`)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Erstelle `src/models.py` mit den Dataclasses `Finding` und `Alert`, die als gemeinsame Typen für Plugins, Analyzer und Outputs dienen.
 
 ## Goals
 
-<!-- Add goals here -->
+- `Finding`-Dataclass mit Feldern: `source`, `namespace`, `resource`, `severity`, `message`, `timestamp`, `raw`
+- `Alert`-Dataclass mit Feldern: `findings`, `severity`, `summary`, `recommendation`, `generated_at`
+- Vollständige Type Hints, keine `Any`-Typen
+- Nur erlaubte Imports: `from dataclasses import dataclass` und `from datetime import datetime`
+- Keine Validierungslogik in den Dataclasses — nur Datenstruktur
+- `from src.models import Finding, Alert` läuft ohne ImportError
 
 ## Done When
 
-<!-- Add done criteria here -->
+`from src.models import Finding, Alert` ist in einer leeren Python-Datei ausführbar ohne ImportError.
 
 ## Notes
 
-<!-- Add notes here -->
+- Severity-Werte (`"info"`, `"warning"`, `"critical"`) werden **nicht** per Enum erzwungen — das ist Aufgabe des Analyzers
+- Kein `print()`, keine Logging-Calls
+- PEP 8, max. 100 Zeichen pro Zeile, snake_case für Felder, PascalCase für Klassen
+- Keine kommentierten Code-Blöcke
 
 ## History
 
