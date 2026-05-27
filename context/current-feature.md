@@ -1,24 +1,40 @@
-# Current Feature
+# Current Feature: Schritt 3 — Config-Loader (`src/config.py`)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Config-Loader, der `config.yaml` einliest und typisierte Konstanten als Singleton-Instanz bereitstellt.
 
 ## Goals
 
-<!-- Add goals here -->
+- `Config` Dataclass mit allen Feldern aus `config.yaml` (LLM, Kubernetes, Plugins, Outputs, Loop)
+- `_load_config()` lädt `config.yaml` relativ zum Projekt-Root via `pathlib.Path`
+- Singleton `config: Config = _load_config()` wird beim Import bereitgestellt
+- `FileNotFoundError` wenn `config.yaml` fehlt, `KeyError` wenn Pflichtfeld fehlt
+- `llm_base_url` ist optional (`None` wenn nicht gesetzt)
+- Keine Defaults für Pflichtfelder (`llm_provider`, `namespaces`)
 
 ## Done When
 
-<!-- Add done criteria here -->
+```python
+from src.config import config
+print(config.namespaces)             # ['default']
+print(config.loop_interval_seconds)  # 60
+print(config.llm_base_url)           # None (oder URL wenn gesetzt)
+```
+
+läuft fehlerfrei durch mit einer befüllten `config.yaml`.
 
 ## Notes
 
-<!-- Add notes here -->
+- Nur erlaubte Imports: `yaml`, `pathlib.Path`, `dataclasses.dataclass`, `logging`
+- `pathlib.Path` für alle Pfade — kein `os.path`
+- Logging mit `logging.getLogger(__name__)` — kein `print()`
+- Specific exceptions — kein bare `except:`
+- Keine hardcodierten Pfade oder Namespace-Namen
 
 ## History
 
