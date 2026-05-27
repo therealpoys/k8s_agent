@@ -1,33 +1,24 @@
-# Current Feature: Schritt 6 — LLM Analyzer (`src/analyzer.py`)
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Feature
 
-Analyzer-Modul, das `list[Finding]` von Plugins entgegennimmt, per LLM analysiert und ein `Alert`-Objekt zurückgibt.
+<!-- Add feature here -->
 
 ## Goals
 
-- `analyze(findings)` wählt den LLM-Provider aus `config.llm_provider` (`openai`, `anthropic`, `ollama`)
-- Strukturierter Prompt fordert Severity-Einstufung, Summary und Recommendation als JSON
-- LLM-Antwort wird validiert: `severity` muss `"info"` | `"warning"` | `"critical"` sein (Fallback: `"warning"`)
-- Gibt ein vollständiges `Alert`-Objekt zurück
-- Degraded Mode bei jedem LLM-Fehler: kein Exception-Propagation, Alert mit höchstem Severity aus Findings
+<!-- Add goals here -->
 
 ## Done When
 
-`analyze([])` gibt ein valides `Alert`-Objekt zurück. Bei fehlender `OPENAI_API_KEY`-Umgebungsvariable läuft der Analyzer im Degraded Mode durch ohne Exception.
+<!-- Add done criteria here -->
 
 ## Notes
 
-- Provider-Mapping: `openai` → `ChatOpenAI`, `anthropic` → `ChatAnthropic`, `ollama` → `ChatOpenAI` mit `base_url` + `api_key="ollama"`
-- Modell: `config.llm_model`, Timeout: `config.llm_timeout`
-- API-Keys nur aus Umgebungsvariablen, nie aus `config.yaml`
-- Hilfsfunktion `_highest_severity(findings)` für Degraded Mode
-- `logging.getLogger(__name__)` — kein `print()`
-- Erlaubte Imports: `json`, `logging`, `datetime`, `src.config`, `src.models` + LangChain je Provider
+<!-- Add notes here -->
 
 ## History
 
@@ -37,3 +28,4 @@ Analyzer-Modul, das `list[Finding]` von Plugins entgegennimmt, per LLM analysier
 - **Schritt 3 — Config-Loader**: `src/config.py` mit `Config` Dataclass, `_load_config()` via `pathlib.Path`, Singleton `config`; `FileNotFoundError`/`KeyError` bei fehlenden Feldern, `llm_base_url` optional
 - **Schritt 4 — Plugin-Interface**: `src/plugins/__init__.py` (leer) und `src/plugins/base.py` mit `BasePlugin(ABC)`; `run() -> list[Finding]` als `@abstractmethod`, `name` als Klassenattribut
 - **Schritt 5 — Erstes Plugin**: `src/plugins/pod_logs.py` mit `PodLogsPlugin`; liest Pod-Logs aus konfigurierten Namespaces via K8s Python Client, In-Cluster/kubeconfig Fallback, dreistufige Fehlerbehandlung (401/403/404/generic); 13 Unit-Tests
+- **Schritt 6 — LLM Analyzer**: `src/analyzer.py` mit `analyze(findings) -> Alert`; Provider-Auswahl (openai/anthropic/ollama), strukturierter JSON-Prompt, Severity-Validierung, Degraded Mode bei jedem LLM-Fehler; 18 Unit-Tests
