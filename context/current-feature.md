@@ -1,24 +1,31 @@
-# Current Feature
+# Current Feature: Plugin-Interface (src/plugins/base.py)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Abstrakte Basisklasse `BasePlugin` für alle Plugins definieren.
 
 ## Goals
 
-<!-- Add goals here -->
+- `src/plugins/__init__.py` (leer) erstellen
+- `src/plugins/base.py` mit `BasePlugin(ABC)` erstellen
+- `run()` mit `@abstractmethod` dekoriert, gibt `list[Finding]` zurück
+- `name` als Klassenattribut (kein `__init__`, kein Instanzattribut)
+- Keine Implementierungslogik — reines Interface
 
 ## Done When
 
-<!-- Add done criteria here -->
+- `from src.plugins.base import BasePlugin` ist ohne ImportError importierbar
+- Eine Subklasse ohne `run()`-Implementierung wirft `TypeError` beim Instanziieren
 
 ## Notes
 
-<!-- Add notes here -->
+- Erlaubte Imports: `from abc import ABC, abstractmethod` und `from src.models import Finding`
+- Kein `print()`, keine Logging-Calls
+- PEP 8, max. 100 Zeichen pro Zeile
 
 ## History
 
