@@ -1,39 +1,24 @@
-# Current Feature: Schritt 8 — LangGraph Agent
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Feature
 
-Erstelle `src/graph.py` — verdrahtet alle Bausteine (plugins, analyzer, console output) in einem LangGraph `StateGraph` mit drei Nodes: collect → analyze → send.
+<!-- Add feature here -->
 
 ## Goals
 
-- `AgentState` TypedDict mit `findings: list[Finding]` und `alert: Alert | None`
-- Graph-Fluss: `START → collect_findings → analyze_findings → send_output → END`
-- `_collect_findings`: instanziiert `PodLogsPlugin`, ruft `run()` auf; bei Fehler leere Liste zurückgeben, nie crashen
-- `_analyze_findings`: ruft `analyzer.analyze()` auf, gibt `{"alert": alert}` zurück
-- `_send_output`: ruft `console.send()` auf, gibt State unverändert zurück
-- `build_graph() -> CompiledGraph` als exportierte Funktion
-- Nodes als private Funktionen (`_`-Prefix), Logging via `logging.getLogger(__name__)`
+<!-- Add goals here -->
 
 ## Done When
 
-```python
-from src.graph import build_graph
-graph = build_graph()
-graph.invoke({})
-```
-
-führt einen vollständigen Zyklus durch (Logs lesen → analysieren → Konsolenausgabe) ohne Exception.
+<!-- Add done criteria here -->
 
 ## Notes
 
-- Erlaubte Imports: `logging`, `typing.TypedDict`, `langgraph.graph` (StateGraph/START/END), `src.models`, `src.plugins.pod_logs`, `src.analyzer`, `src.outputs.console`
-- Kein Agent-Code außerhalb von `graph.py`
-- State-Schema explizit als TypedDict, kein generisches `dict`
-- Kein Loop in Stage 1 — single cycle only
+<!-- Add notes here -->
 
 ## History
 
@@ -45,3 +30,4 @@ führt einen vollständigen Zyklus durch (Logs lesen → analysieren → Konsole
 - **Schritt 5 — Erstes Plugin**: `src/plugins/pod_logs.py` mit `PodLogsPlugin`; liest Pod-Logs aus konfigurierten Namespaces via K8s Python Client, In-Cluster/kubeconfig Fallback, dreistufige Fehlerbehandlung (401/403/404/generic); 13 Unit-Tests
 - **Schritt 6 — LLM Analyzer**: `src/analyzer.py` mit `analyze(findings) -> Alert`; Provider-Auswahl (openai/anthropic/ollama), strukturierter JSON-Prompt, Severity-Validierung, Degraded Mode bei jedem LLM-Fehler; 18 Unit-Tests
 - **Schritt 7 — Console Output**: `src/outputs/__init__.py` (leer) und `src/outputs/console.py` mit `send(alert) -> None`; strukturierte Ausgabe via `logging.info()`, Trennlinien, `[SEVERITY]`-Header, Timestamp als UTC, nummerierte Findings mit Message-Kürzung auf 200 Zeichen, "No findings" bei leerer Liste; 12 Unit-Tests
+- **Schritt 8 — LangGraph Agent**: `src/graph.py` mit `AgentState` TypedDict, `build_graph() -> CompiledGraph`; drei private Nodes (`_collect_findings`, `_analyze_findings`, `_send_output`); Graph-Fluss START→collect→analyze→send→END; Fehlerbehandlung in collect (Exception → leere Liste, nie crashen); 10 Unit-Tests
