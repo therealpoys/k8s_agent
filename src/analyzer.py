@@ -18,14 +18,22 @@ Findings:
 Respond with exactly this JSON structure:
 {{
   "severity": "<info|warning|critical>",
-  "summary": "<2-3 sentence summary of the situation>",
-  "recommendation": "<concrete action to take>"
+  "summary": "<2-3 sentence summary of the overall situation>",
+  "recommendation": "<overall action to take>",
+  "findings": [
+    {{
+      "index": 1,
+      "severity": "<info|warning|critical>",
+      "recommendation": "<concrete, actionable step specific to this finding>"
+    }}
+  ]
 }}
 
 Rules:
 - severity must be one of: info, warning, critical
 - summary must be 2-3 sentences
-- recommendation must be a concrete, actionable step"""
+- findings array must have exactly one entry per input finding, with index matching the Finding # number
+- each recommendation must directly address that specific finding's log content — do not mix up findings"""
 
 
 def _highest_severity(findings: list[Finding]) -> str:
@@ -75,19 +83,29 @@ def _degraded_alert(findings: list[Finding]) -> Alert:
     )
 
 
+def _clean_log(message: str, max_chars: int = 400) -> str:
+    if message.startswith("b'") or message.startswith('b"'):
+        message = message[2:-1].replace("\\n", "\n").replace("\\'", "'")
+    return message[:max_chars].strip()
+
+
 def analyze(findings: list[Finding]) -> Alert:
     """Analysiert Findings via LLM und gibt einen Alert zurück."""
-    findings_text = "\n".join(
-        f"- [{f.severity.upper()}] {f.source}/{f.namespace}/{f.resource}: {f.message}"
-        for f in findings
+    findings_text = "\n\n".join(
+        f"Finding #{i} [{f.severity.upper()}] {f.namespace}/{f.resource}:\n{_clean_log(f.message)}"
+        for i, f in enumerate(findings, start=1)
     ) or "(no findings)"
 
     prompt = _PROMPT_TEMPLATE.format(findings=findings_text)
 
     try:
         llm = _build_llm()
+        if config.debug_log_llm_io:
+            logger.info("LLM REQUEST:\n%s", prompt)
         response = llm.invoke(prompt)
         raw_content = response.content if hasattr(response, "content") else str(response)
+        if config.debug_log_llm_io:
+            logger.info("LLM RESPONSE:\n%s", raw_content)
 
         data = json.loads(raw_content)
 
@@ -96,8 +114,27 @@ def analyze(findings: list[Finding]) -> Alert:
             logger.warning("LLM returned invalid severity %r, defaulting to 'warning'", severity)
             severity = "warning"
 
+        per_finding = data.get("findings", [])
+        enriched = list(findings)
+        for finding_data in per_finding:
+            idx = finding_data.get("index", 0) - 1
+            if idx < 0 or idx >= len(enriched):
+                continue
+            f = enriched[idx]
+            f_severity = finding_data.get("severity", f.severity)
+            enriched[idx] = Finding(
+                source=f.source,
+                namespace=f.namespace,
+                resource=f.resource,
+                severity=f_severity if f_severity in _VALID_SEVERITIES else f.severity,
+                message=f.message,
+                timestamp=f.timestamp,
+                raw=f.raw,
+                recommendation=finding_data.get("recommendation"),
+            )
+
         return Alert(
-            findings=findings,
+            findings=enriched,
             severity=severity,
             summary=data["summary"],
             recommendation=data["recommendation"],

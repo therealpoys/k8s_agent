@@ -26,6 +26,8 @@ class Config:
 
     loop_interval_seconds: int
 
+    debug_log_llm_io: bool
+
 
 def _load_config() -> Config:
     if not _CONFIG_PATH.exists():
@@ -57,6 +59,7 @@ def _load_config() -> Config:
         optional_plugins=plugins.get("optional", {}),
         outputs=raw["outputs"],
         loop_interval_seconds=raw["loop_interval_seconds"],
+        debug_log_llm_io=raw.get("debug", {}).get("log_llm_io", False),
     )
 
 

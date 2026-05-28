@@ -30,13 +30,18 @@ def send(alert: Alert) -> None:
         lines.append(f"Findings ({len(alert.findings)}):")
         for i, finding in enumerate(alert.findings, start=1):
             finding_ts = finding.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            message = finding.message[:200]
+            msg = finding.message
+            if msg.startswith("b'") or msg.startswith('b"'):
+                msg = msg[2:-1].replace("\\n", " ").replace("\\'", "'")
+            message = msg[:200]
             lines += [
                 f"  [{i}] {finding.source} / {finding.namespace} / {finding.resource}",
                 f"      Severity: {finding.severity}",
                 f"      {finding_ts} | {message}",
-                "",
             ]
+            if finding.recommendation:
+                lines.append(f"      → {finding.recommendation}")
+            lines.append("")
 
     lines.append(_SEPARATOR)
     logger.info("\n" + "\n".join(lines))

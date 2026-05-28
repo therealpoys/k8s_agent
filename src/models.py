@@ -11,6 +11,7 @@ class Finding:
     message: str
     timestamp: datetime
     raw: dict | None
+    recommendation: str | None = None
 
 
 @dataclass
