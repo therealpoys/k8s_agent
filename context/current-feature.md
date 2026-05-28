@@ -1,24 +1,33 @@
-# Current Feature
+# Current Feature: Schritt 9 — Einstiegspunkt (`agent.py`)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Minimaler Einstiegspunkt `agent.py` im Projekt-Root, der Logging konfiguriert, `.env` lädt, den LangGraph-Graphen baut und einmalig ausführt. Schließt Stage 1 ab.
 
 ## Goals
 
-<!-- Add goals here -->
+- `agent.py` im Projekt-Root erstellen
+- Logging via `LOG_LEVEL` Env-Variable konfigurieren (Default `INFO`)
+- `.env` via `python-dotenv` laden
+- `build_graph()` aufrufen und Graph einmalig mit `graph.invoke({})` starten
+- Fehlerbehandlung: `FileNotFoundError` für fehlende `config.yaml` → Exit-Code 1; unerwartete Exceptions um `graph.invoke()` → `CRITICAL`-Log + Exit-Code 1
+- `if __name__ == "__main__":` Guard
 
 ## Done When
 
-<!-- Add done criteria here -->
+`python agent.py` läuft durch, gibt strukturierte Analyse auf der Konsole aus und beendet sich sauber. Stage 1 ist abgeschlossen.
 
 ## Notes
 
-<!-- Add notes here -->
+- Erlaubte Imports: `logging`, `os`, `sys`, `dotenv.load_dotenv`, `src.graph.build_graph`
+- Kein `print()` nach dem Logging-Setup — nur `logging.getLogger(__name__)`
+- Kein Agent-Code in `agent.py` — nur Initialisierung und Aufruf
+- `try/except Exception` nur um `graph.invoke()`, nicht um die gesamte Logik
+- Logging-Format: `"%(asctime)s [%(levelname)s] %(name)s: %(message)s"`, datefmt `"%Y-%m-%d %H:%M:%S"`
 
 ## History
 
