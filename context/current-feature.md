@@ -1,24 +1,39 @@
-# Current Feature
+# Current Feature: Schritt 8 — LangGraph Agent
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Erstelle `src/graph.py` — verdrahtet alle Bausteine (plugins, analyzer, console output) in einem LangGraph `StateGraph` mit drei Nodes: collect → analyze → send.
 
 ## Goals
 
-<!-- Add goals here -->
+- `AgentState` TypedDict mit `findings: list[Finding]` und `alert: Alert | None`
+- Graph-Fluss: `START → collect_findings → analyze_findings → send_output → END`
+- `_collect_findings`: instanziiert `PodLogsPlugin`, ruft `run()` auf; bei Fehler leere Liste zurückgeben, nie crashen
+- `_analyze_findings`: ruft `analyzer.analyze()` auf, gibt `{"alert": alert}` zurück
+- `_send_output`: ruft `console.send()` auf, gibt State unverändert zurück
+- `build_graph() -> CompiledGraph` als exportierte Funktion
+- Nodes als private Funktionen (`_`-Prefix), Logging via `logging.getLogger(__name__)`
 
 ## Done When
 
-<!-- Add done criteria here -->
+```python
+from src.graph import build_graph
+graph = build_graph()
+graph.invoke({})
+```
+
+führt einen vollständigen Zyklus durch (Logs lesen → analysieren → Konsolenausgabe) ohne Exception.
 
 ## Notes
 
-<!-- Add notes here -->
+- Erlaubte Imports: `logging`, `typing.TypedDict`, `langgraph.graph` (StateGraph/START/END), `src.models`, `src.plugins.pod_logs`, `src.analyzer`, `src.outputs.console`
+- Kein Agent-Code außerhalb von `graph.py`
+- State-Schema explizit als TypedDict, kein generisches `dict`
+- Kein Loop in Stage 1 — single cycle only
 
 ## History
 
