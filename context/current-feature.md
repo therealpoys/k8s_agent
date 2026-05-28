@@ -20,6 +20,7 @@ Not Started
 
 <!-- Add notes here -->
 
+
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
@@ -32,3 +33,4 @@ Not Started
 - **Schritt 7 — Console Output**: `src/outputs/__init__.py` (leer) und `src/outputs/console.py` mit `send(alert) -> None`; strukturierte Ausgabe via `logging.info()`, Trennlinien, `[SEVERITY]`-Header, Timestamp als UTC, nummerierte Findings mit Message-Kürzung auf 200 Zeichen, "No findings" bei leerer Liste; 12 Unit-Tests
 - **Schritt 8 — LangGraph Agent**: `src/graph.py` mit `AgentState` TypedDict, `build_graph() -> CompiledGraph`; drei private Nodes (`_collect_findings`, `_analyze_findings`, `_send_output`); Graph-Fluss START→collect→analyze→send→END; Fehlerbehandlung in collect (Exception → leere Liste, nie crashen); 10 Unit-Tests
 - **Schritt 9 — Einstiegspunkt**: `agent.py` im Projekt-Root; Logging via `LOG_LEVEL`, `load_dotenv()`, `build_graph()` + einmaliges `graph.invoke({})`; `FileNotFoundError` → stderr + exit 1; unerwartete Exceptions um `graph.invoke()` → `CRITICAL` + exit 1; `__main__` Guard; 3 Unit-Tests; Stage 1 abgeschlossen
+- **Bugfixes & Ollama-Testlauf**: Multi-Container-Support in `pod_logs.py` (400 Bad Request Fix); per-Finding LLM-Empfehlungen mit index-basiertem Matching; `b'...'` Bytes-Repr bereinigt; `debug.log_llm_io` Flag in config.yaml für LLM Request/Response Logging
