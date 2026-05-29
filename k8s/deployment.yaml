@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-agent
+  namespace: default
+  labels:
+    app: k8s-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-agent
+  template:
+    metadata:
+      labels:
+        app: k8s-agent
+    spec:
+      serviceAccountName: k8s-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: k8s-agent
+          image: k8s-agent:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONFIG_PATH
+              value: /app/config/config.yaml
+            # LLM-Endpunkt — anpassen auf den tatsächlichen Ollama-Service
+            - name: LLM_BASE_URL
+              value: "http://ollama.default.svc.cluster.local:11434/v1"
+            # Optional: Intervall überschreiben ohne ConfigMap-Update
+            # - name: LOOP_INTERVAL_SECONDS
+            #   value: "120"
+            - name: LOG_LEVEL
+              value: "INFO"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # Kein livenessProbe nötig: wenn der Agent crasht, startet K8s ihn neu
+      volumes:
+        - name: config
+          configMap:
+            name: k8s-agent-config
+      restartPolicy: Always
