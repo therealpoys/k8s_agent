@@ -60,10 +60,11 @@ def _build_llm():
     if provider == "ollama":
         from langchain_openai import ChatOpenAI
 
+        base_url = (config.llm_base_url or "http://localhost:11434").rstrip("/") + "/v1"
         return ChatOpenAI(
             model=model,
             timeout=timeout,
-            base_url=config.llm_base_url,
+            base_url=base_url,
             api_key="ollama",
         )
 
