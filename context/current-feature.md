@@ -1,43 +1,24 @@
-# Current Feature: Schritt 10 — Pod-Spec, Status & Events als Kontext
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Feature
 
-Extend `pod_logs.py` to collect per-container pod spec, status fields, and Kubernetes events alongside log lines. Extend `analyzer.py` to include these new fields in the LLM prompt as a structured, readable block per finding.
+<!-- Add feature here -->
 
 ## Goals
 
-- `pod_logs.py` enriches each Finding's `raw` dict with: `image`, `resources` (requests/limits), `liveness_probe`, `readiness_probe`, `phase`, `restart_count`, `ready`, `state`, and `events`
-- Container status is matched by name (not index); missing status fields default to safe values (0 / False / "unknown")
-- Kubernetes events are fetched per pod via `list_namespaced_event` with `field_selector`; only Warning events or those with `count > 1` are included; API errors result in an empty list (logged as warning, never a crash)
-- `analyzer.py` renders each Finding as a structured block in the prompt (image, phase, state, restarts, probes, limits, events, then logs) — not a raw dict dump
-- LLM output references restarts, state, and events — not just log content
+<!-- Add goals here -->
 
 ## Done When
 
-The LLM receives a prompt block per finding resembling:
-```
-Pod: my-app-7d9f8b-xkj2p / my-app
-Image: my-registry/my-app:v1.2.3
-Phase: Running | State: waiting:CrashLoopBackOff | Restarts: 5 | Ready: false
-Limits: cpu=500m, memory=256Mi | Requests: cpu=100m, memory=128Mi
-Probes: liveness=true, readiness=false
-Events:
-  [Warning] BackOff (x12): Back-off restarting failed container
-Logs (last 100 lines):
-  ...
-```
+<!-- Add done criteria here -->
 
 ## Notes
 
-- No breaking change to the `Finding` data model — all new data goes into the existing `raw` dict
-- Events API failures must not abort the pod run — always `try/except`, empty list on error, `logger.warning`
-- Container status matching by container name, not list index
-- No `print()` — only `logger.*`
-- `container_statuses` list on `pod.status` can be `None`
+<!-- Add notes here -->
 
 
 
@@ -55,3 +36,4 @@ Logs (last 100 lines):
 - **Schritt 9 — Einstiegspunkt**: `agent.py` im Projekt-Root; Logging via `LOG_LEVEL`, `load_dotenv()`, `build_graph()` + einmaliges `graph.invoke({})`; `FileNotFoundError` → stderr + exit 1; unerwartete Exceptions um `graph.invoke()` → `CRITICAL` + exit 1; `__main__` Guard; 3 Unit-Tests; Stage 1 abgeschlossen
 - **Bugfixes & Ollama-Testlauf**: Multi-Container-Support in `pod_logs.py` (400 Bad Request Fix); per-Finding LLM-Empfehlungen mit index-basiertem Matching; `b'...'` Bytes-Repr bereinigt; `debug.log_llm_io` Flag in config.yaml für LLM Request/Response Logging
 - **Ollama-Fix & Schritt-10-Prompt**: `/v1`-Suffix für Ollama-Endpoint in `analyzer.py`; korrekter Modellname `qwen3.6:35b-a3b-q4_K_M`; `context/prompts/step10_pod_context.md` — Spec für Pod-Spec/Status/Events-Kontext im LLM-Prompt
+- **Schritt 10 — Pod-Spec, Status & Events als Kontext**: `pod_logs.py` erweitert um Image, Ressourcen (requests/limits), Probes, Phase, Restart-Count, Ready und Container-State (inkl. CrashLoop-Erkennung); Events per Pod via `list_namespaced_event` (nur Warning oder count>1, API-Fehler → leere Liste); `analyzer.py` rendert pro Finding einen strukturierten Block im LLM-Prompt; `_format_finding_block()` + aktualisiertes Prompt-Template; Tests repariert (Multi-Container-Regression) und erweitert; 75 Tests grün
