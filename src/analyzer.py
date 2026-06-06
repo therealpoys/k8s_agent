@@ -118,6 +118,8 @@ def _format_finding_block(i: int, f: Finding) -> str:
     limits = resources.get("limits", {}) if isinstance(resources, dict) else {}
     liveness_probe = raw.get("liveness_probe", False)
     readiness_probe = raw.get("readiness_probe", False)
+    command = raw.get("command", [])
+    last_exit_code = raw.get("last_exit_code")
     events = raw.get("events", [])
     log_lines = raw.get("log_lines", "?")
 
@@ -129,6 +131,11 @@ def _format_finding_block(i: int, f: Finding) -> str:
         f"Limits: {_fmt_resources(limits)} | Requests: {_fmt_resources(requests)}",
         f"Probes: liveness={str(liveness_probe).lower()}, readiness={str(readiness_probe).lower()}",
     ]
+
+    if command:
+        lines.append(f"Command: {' '.join(command)}")
+    if last_exit_code is not None:
+        lines.append(f"Last exit code: {last_exit_code}")
 
     if events:
         lines.append("Events:")
