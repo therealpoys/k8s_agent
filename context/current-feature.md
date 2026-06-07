@@ -21,6 +21,7 @@ Not Started
 <!-- Add notes here -->
 
 
+
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
@@ -34,3 +35,6 @@ Not Started
 - **Schritt 8 — LangGraph Agent**: `src/graph.py` mit `AgentState` TypedDict, `build_graph() -> CompiledGraph`; drei private Nodes (`_collect_findings`, `_analyze_findings`, `_send_output`); Graph-Fluss START→collect→analyze→send→END; Fehlerbehandlung in collect (Exception → leere Liste, nie crashen); 10 Unit-Tests
 - **Schritt 9 — Einstiegspunkt**: `agent.py` im Projekt-Root; Logging via `LOG_LEVEL`, `load_dotenv()`, `build_graph()` + einmaliges `graph.invoke({})`; `FileNotFoundError` → stderr + exit 1; unerwartete Exceptions um `graph.invoke()` → `CRITICAL` + exit 1; `__main__` Guard; 3 Unit-Tests; Stage 1 abgeschlossen
 - **Bugfixes & Ollama-Testlauf**: Multi-Container-Support in `pod_logs.py` (400 Bad Request Fix); per-Finding LLM-Empfehlungen mit index-basiertem Matching; `b'...'` Bytes-Repr bereinigt; `debug.log_llm_io` Flag in config.yaml für LLM Request/Response Logging
+- **Ollama-Fix & Schritt-10-Prompt**: `/v1`-Suffix für Ollama-Endpoint in `analyzer.py`; korrekter Modellname `qwen3.6:35b-a3b-q4_K_M`; `context/prompts/step10_pod_context.md` — Spec für Pod-Spec/Status/Events-Kontext im LLM-Prompt
+- **Schritt 10 — Pod-Spec, Status & Events als Kontext**: `pod_logs.py` erweitert um Image, Ressourcen (requests/limits), Probes, Phase, Restart-Count, Ready und Container-State (inkl. CrashLoop-Erkennung); Events per Pod via `list_namespaced_event` (nur Warning oder count>1, API-Fehler → leere Liste); `analyzer.py` rendert pro Finding einen strukturierten Block im LLM-Prompt; `_format_finding_block()` + aktualisiertes Prompt-Template; Tests repariert (Multi-Container-Regression) und erweitert; 75 Tests grün
+- **Bugfixes — Init-Container, CrashLoop-Logs & Command-Kontext**: Init-Container-Support in `pod_logs.py` (spec.init_containers + status.init_container_statuses); 400-Fehler-Fix für wartende Container (ImagePullBackOff etc.) durch bedingten Log-Abruf; `previous=True` für CrashLoopBackOff um letzte Crash-Logs zu lesen; `command`/`args` und `last_exit_code` als Kontext im Finding + LLM-Prompt damit das LLM fehlerhafte Entrypoints direkt erkennt

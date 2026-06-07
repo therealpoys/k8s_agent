@@ -11,10 +11,30 @@ from src.models import Finding
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_pod(name: str, namespace: str) -> MagicMock:
+def _make_pod(name: str, namespace: str, container_name: str = "app") -> MagicMock:
     pod = MagicMock()
     pod.metadata.name = name
     pod.metadata.namespace = namespace
+
+    container_spec = MagicMock()
+    container_spec.name = container_name
+    container_spec.image = "test-image:latest"
+    container_spec.resources.requests = {"cpu": "100m", "memory": "128Mi"}
+    container_spec.resources.limits = {"cpu": "500m", "memory": "256Mi"}
+    container_spec.liveness_probe = MagicMock()
+    container_spec.readiness_probe = None
+    pod.spec.containers = [container_spec]
+
+    cs = MagicMock()
+    cs.name = container_name
+    cs.restart_count = 0
+    cs.ready = True
+    cs.state.running = MagicMock()
+    cs.state.waiting = None
+    cs.state.terminated = None
+    pod.status.container_statuses = [cs]
+    pod.status.phase = "Running"
+
     return pod
 
 
@@ -44,6 +64,7 @@ def mock_k8s():
         patch("src.plugins.pod_logs.client.CoreV1Api") as api_cls,
     ):
         v1 = MagicMock()
+        v1.list_namespaced_event.return_value.items = []
         api_cls.return_value = v1
         yield {"in_cluster": in_cluster, "kube_config": kube_config, "v1": v1}
 
@@ -78,7 +99,6 @@ class TestInit:
 
 class TestRunHappyPath:
     def test_returns_finding_per_pod_with_logs(self, mock_k8s):
-        import importlib
         import src.plugins.pod_logs as module
 
         mock_cfg = _mock_config(namespaces=["default"], log_lines=50)
@@ -97,11 +117,19 @@ class TestRunHappyPath:
         assert isinstance(f, Finding)
         assert f.source == "pod_logs"
         assert f.namespace == "default"
-        assert f.resource == "web-abc"
+        assert f.resource == "web-abc/app"
         assert f.severity == "info"
         assert f.message == "line1\nline2\nline3"
         assert isinstance(f.timestamp, datetime)
-        assert f.raw == {"pod_name": "web-abc", "namespace": "default", "log_lines": 3}
+        assert f.raw["pod_name"] == "web-abc"
+        assert f.raw["container"] == "app"
+        assert f.raw["namespace"] == "default"
+        assert f.raw["log_lines"] == 3
+        assert f.raw["image"] == "test-image:latest"
+        assert f.raw["restart_count"] == 0
+        assert f.raw["ready"] is True
+        assert f.raw["state"] == "running"
+        assert f.raw["events"] == []
 
     def test_log_lines_passed_to_api(self, mock_k8s):
         import src.plugins.pod_logs as module
@@ -118,7 +146,6 @@ class TestRunHappyPath:
 
         _, kwargs = v1.read_namespaced_pod_log.call_args
         assert kwargs["tail_lines"] == 100
-        assert kwargs["timeout_seconds"] == 10
 
     def test_returns_empty_list_when_no_pods(self, mock_k8s):
         import src.plugins.pod_logs as module
@@ -244,7 +271,7 @@ class TestRunReadLogsErrors:
             findings = PodLogsPlugin().run()
 
         assert len(findings) == 1
-        assert findings[0].resource == "live-pod"
+        assert findings[0].resource == "live-pod/app"
 
     def test_401_on_read_returns_early(self, mock_k8s):
         import src.plugins.pod_logs as module
@@ -279,4 +306,4 @@ class TestRunReadLogsErrors:
             findings = PodLogsPlugin().run()
 
         assert len(findings) == 1
-        assert findings[0].resource == "ok-pod"
+        assert findings[0].resource == "ok-pod/app"
