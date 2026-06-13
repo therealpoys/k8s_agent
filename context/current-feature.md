@@ -20,8 +20,6 @@ Not Started
 
 <!-- Add notes here -->
 
-
-
 ## History
 
 <!-- Keep this updated. Earliest to latest -->
@@ -38,3 +36,4 @@ Not Started
 - **Ollama-Fix & Schritt-10-Prompt**: `/v1`-Suffix für Ollama-Endpoint in `analyzer.py`; korrekter Modellname `qwen3.6:35b-a3b-q4_K_M`; `context/prompts/step10_pod_context.md` — Spec für Pod-Spec/Status/Events-Kontext im LLM-Prompt
 - **Schritt 10 — Pod-Spec, Status & Events als Kontext**: `pod_logs.py` erweitert um Image, Ressourcen (requests/limits), Probes, Phase, Restart-Count, Ready und Container-State (inkl. CrashLoop-Erkennung); Events per Pod via `list_namespaced_event` (nur Warning oder count>1, API-Fehler → leere Liste); `analyzer.py` rendert pro Finding einen strukturierten Block im LLM-Prompt; `_format_finding_block()` + aktualisiertes Prompt-Template; Tests repariert (Multi-Container-Regression) und erweitert; 75 Tests grün
 - **Bugfixes — Init-Container, CrashLoop-Logs & Command-Kontext**: Init-Container-Support in `pod_logs.py` (spec.init_containers + status.init_container_statuses); 400-Fehler-Fix für wartende Container (ImagePullBackOff etc.) durch bedingten Log-Abruf; `previous=True` für CrashLoopBackOff um letzte Crash-Logs zu lesen; `command`/`args` und `last_exit_code` als Kontext im Finding + LLM-Prompt damit das LLM fehlerhafte Entrypoints direkt erkennt
+- **Schritt 11 — In-Cluster Deployment mit Helm**: `Dockerfile` (python:3.13-slim, keine Config/Secrets eingebaut); `deploy/helm/k8s-agent/` mit Chart.yaml, values.yaml, `_helpers.tpl`; Templates: ServiceAccount, read-only ClusterRole (pods/pods-log/events), ClusterRoleBinding, ConfigMap (agentConfig → config.yaml via toYaml), Deployment (subPath-Mount, existingSecret optional via `{{- if }}`); `values.local.yaml` gitignored für lokales Ollama via `host.internal:11434`; erfolgreich deployed und verifiziert im OrbStack-Cluster
