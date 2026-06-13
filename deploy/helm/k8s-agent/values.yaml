@@ -1,0 +1,43 @@
+image:
+  repository: k8s-agent
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Wird als config.yaml in den Container gemountet
+agentConfig:
+  llm:
+    provider: anthropic          # anthropic | openai | ollama
+    model: claude-haiku-4-5-20251001
+    timeout_seconds: 60
+    # base_url nur für Ollama nötig:
+    # base_url: http://ollama.ollama.svc.cluster.local:11434
+
+  kubernetes:
+    namespaces:
+      - default
+    log_lines: 100
+
+  plugins:
+    core:
+      - pod_logs
+    optional:
+      trivy: false
+      falco: false
+      prometheus: false
+
+  outputs:
+    - console
+
+  loop_interval_seconds: 60
+
+# Name eines bereits existierenden Secrets mit LLM API-Keys
+# Das Secret muss ANTHROPIC_API_KEY oder OPENAI_API_KEY enthalten
+existingSecret: k8s-agent-secrets
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

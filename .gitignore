@@ -16,3 +16,5 @@ build/
 .mypy_cache/
 .ruff_cache/
 *.log
+
+deploy/helm/k8s-agent/values.local.yaml
