@@ -27,8 +27,6 @@ class Config:
 
     outputs: list[str]
 
-    loop_interval_seconds: int
-
     debug_log_llm_io: bool
 
 
@@ -66,7 +64,6 @@ def _load_config() -> Config:
         core_plugins=plugins["core"],
         optional_plugins=plugins.get("optional", {}),
         outputs=raw["outputs"],
-        loop_interval_seconds=int(os.getenv("LOOP_INTERVAL_SECONDS", raw["loop_interval_seconds"])),
         debug_log_llm_io=raw.get("debug", {}).get("log_llm_io", False),
     )
 

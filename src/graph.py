@@ -4,7 +4,7 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 
 from src.models import Finding, Alert
-from src.plugins.pod_logs import PodLogsPlugin
+from src.plugins.loader import load_plugins
 from src import analyzer
 from src.outputs import console
 
@@ -17,13 +17,15 @@ class AgentState(TypedDict):
 
 
 def _collect_findings(state: AgentState) -> dict:
-    try:
-        plugin = PodLogsPlugin()
-        findings = plugin.run()
-        return {"findings": findings}
-    except Exception as exc:
-        logger.error("collect_findings failed: %s", exc)
-        return {"findings": []}
+    all_findings: list[Finding] = []
+    for plugin in load_plugins():
+        try:
+            findings = plugin.run()
+            all_findings.extend(findings)
+            logger.debug("Plugin %s: %d Findings", plugin.name, len(findings))
+        except Exception as exc:
+            logger.error("Plugin %s fehlgeschlagen: %s", plugin.name, exc)
+    return {"findings": all_findings}
 
 
 def _analyze_findings(state: AgentState) -> dict:
@@ -37,7 +39,6 @@ def _send_output(state: AgentState) -> dict:
 
 
 def build_graph():
-    """Baut und kompiliert den LangGraph Agent."""
     graph = StateGraph(AgentState)
 
     graph.add_node("collect_findings", _collect_findings)

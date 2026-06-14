@@ -18,3 +18,4 @@ build/
 *.log
 
 deploy/helm/k8s-agent/values.local.yaml
+deploy/helm/k8s-agent/charts/

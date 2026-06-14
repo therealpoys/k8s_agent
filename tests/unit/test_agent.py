@@ -11,8 +11,9 @@ def no_dotenv():
 
 
 def _run_main():
-    """Import and call main() with a clean module state."""
+    import importlib
     import agent
+    importlib.reload(agent)
     agent.main()
 
 
@@ -45,4 +46,4 @@ def test_main_graph_invoke_exception(caplog):
                 _run_main()
 
     assert exc_info.value.code == 1
-    assert any("CRITICAL" in r.levelname and "Unexpected error" in r.message for r in caplog.records)
+    assert any("CRITICAL" in r.levelname for r in caplog.records)

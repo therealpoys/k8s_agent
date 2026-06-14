@@ -12,3 +12,8 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "get"]
+  {{- if .Values.agentConfig.plugins.optional.trivy }}
+  - apiGroups: ["aquasecurity.github.io"]
+    resources: ["vulnerabilityreports", "configauditreports", "exposedsecretreports"]
+    verbs: ["list", "get"]
+  {{- end }}

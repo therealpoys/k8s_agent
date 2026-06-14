@@ -3,6 +3,8 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
+schedule: "* * * * *"
+
 # Wird als config.yaml in den Container gemountet
 agentConfig:
   llm:
@@ -28,8 +30,6 @@ agentConfig:
   outputs:
     - console
 
-  loop_interval_seconds: 60
-
 # Name eines bereits existierenden Secrets mit LLM API-Keys
 # Das Secret muss ANTHROPIC_API_KEY oder OPENAI_API_KEY enthalten
 existingSecret: k8s-agent-secrets
@@ -41,3 +41,9 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
+
+# Trivy Operator — https://aquasecurity.github.io/helm-charts/
+# Wenn enabled: true, wird der Trivy Operator als Sub-Chart mitinstalliert.
+# Danach agentConfig.plugins.optional.trivy auf true setzen um das Plugin zu aktivieren.
+trivy-operator:
+  enabled: false

@@ -29,6 +29,16 @@ def _make_alert(findings: list[Finding]) -> Alert:
     )
 
 
+def _mock_plugin(findings: list[Finding] | Exception = None, name: str = "test_plugin"):
+    plugin = MagicMock()
+    plugin.name = name
+    if isinstance(findings, Exception):
+        plugin.run.side_effect = findings
+    else:
+        plugin.run.return_value = findings or []
+    return plugin
+
+
 # ---------------------------------------------------------------------------
 # _collect_findings
 # ---------------------------------------------------------------------------
@@ -36,34 +46,44 @@ def _make_alert(findings: list[Finding]) -> Alert:
 class TestCollectFindings:
     def test_happy_path_returns_findings(self):
         finding = _make_finding()
-        mock_plugin = MagicMock()
-        mock_plugin.run.return_value = [finding]
+        plugin = _mock_plugin([finding])
 
-        with patch("src.graph.PodLogsPlugin", return_value=mock_plugin):
+        with patch("src.graph.load_plugins", return_value=[plugin]):
             result = _collect_findings({})
 
         assert result == {"findings": [finding]}
 
-    def test_plugin_exception_returns_empty_list(self):
-        mock_plugin = MagicMock()
-        mock_plugin.run.side_effect = RuntimeError("k8s unreachable")
+    def test_plugin_exception_returns_empty_and_continues(self):
+        finding = _make_finding()
+        failing = _mock_plugin(RuntimeError("k8s unreachable"), name="bad_plugin")
+        working = _mock_plugin([finding], name="good_plugin")
 
-        with patch("src.graph.PodLogsPlugin", return_value=mock_plugin):
+        with patch("src.graph.load_plugins", return_value=[failing, working]):
+            result = _collect_findings({})
+
+        assert result == {"findings": [finding]}
+
+    def test_all_plugins_fail_returns_empty_list(self):
+        failing = _mock_plugin(RuntimeError("boom"), name="bad_plugin")
+
+        with patch("src.graph.load_plugins", return_value=[failing]):
             result = _collect_findings({})
 
         assert result == {"findings": []}
 
-    def test_plugin_instantiation_error_returns_empty_list(self):
-        with patch("src.graph.PodLogsPlugin", side_effect=Exception("no kubeconfig")):
+    def test_aggregates_findings_from_multiple_plugins(self):
+        f1 = _make_finding()
+        f2 = _make_finding()
+        p1 = _mock_plugin([f1], name="plugin_a")
+        p2 = _mock_plugin([f2], name="plugin_b")
+
+        with patch("src.graph.load_plugins", return_value=[p1, p2]):
             result = _collect_findings({})
 
-        assert result == {"findings": []}
+        assert result == {"findings": [f1, f2]}
 
-    def test_empty_findings_returned_as_is(self):
-        mock_plugin = MagicMock()
-        mock_plugin.run.return_value = []
-
-        with patch("src.graph.PodLogsPlugin", return_value=mock_plugin):
+    def test_no_plugins_returns_empty_list(self):
+        with patch("src.graph.load_plugins", return_value=[]):
             result = _collect_findings({})
 
         assert result == {"findings": []}
@@ -133,13 +153,13 @@ class TestBuildGraph:
     def test_graph_is_invocable(self):
         finding = _make_finding()
         alert = _make_alert([finding])
+        plugin = _mock_plugin([finding])
 
         with (
-            patch("src.graph.PodLogsPlugin") as mock_plugin_cls,
+            patch("src.graph.load_plugins", return_value=[plugin]),
             patch("src.graph.analyzer.analyze", return_value=alert),
             patch("src.graph.console.send"),
         ):
-            mock_plugin_cls.return_value.run.return_value = [finding]
             graph = build_graph()
             result = graph.invoke({"findings": [], "alert": None})
 

@@ -10,13 +10,11 @@ kubernetes:
 
 plugins:
   core:
-    - pod_logs
+    - pod_logs        # immer aktiv
   optional:
-    trivy: false
-    falco: false
-    prometheus: false
+    trivy: false      # Trivy Operator muss im Cluster installiert sein
+    falco: false      # noch nicht implementiert
+    prometheus: false # noch nicht implementiert
 
 outputs:
   - console
-
-loop_interval_seconds: 60

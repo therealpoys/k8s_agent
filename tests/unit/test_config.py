@@ -22,8 +22,6 @@ plugins:
 
 outputs:
   - console
-
-loop_interval_seconds: 60
 """
 
 YAML_WITH_BASE_URL = MINIMAL_YAML.replace(
@@ -72,10 +70,9 @@ class TestLoadConfigHappyPath:
         assert cfg.core_plugins == ["pod_logs"]
         assert cfg.optional_plugins == {"trivy": False}
 
-    def test_outputs_and_loop(self, tmp_path):
+    def test_outputs(self, tmp_path):
         cfg = _call_load(tmp_path, MINIMAL_YAML)
         assert cfg.outputs == ["console"]
-        assert cfg.loop_interval_seconds == 60
 
     def test_multiple_namespaces(self, tmp_path):
         yaml = MINIMAL_YAML.replace("    - default", "    - default\n    - kube-system")

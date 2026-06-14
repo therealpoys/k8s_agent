@@ -3,3 +3,9 @@ name: k8s-agent
 description: Kubernetes Observability Agent
 version: 0.1.0
 appVersion: "0.1.0"
+
+dependencies:
+  - name: trivy-operator
+    version: "0.28.1"
+    repository: https://aquasecurity.github.io/helm-charts/
+    condition: trivy-operator.enabled
