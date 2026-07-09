@@ -18,6 +18,7 @@ agentConfig:
     namespaces:
       - default
     log_lines: 100
+    falco_namespace: falco
 
   plugins:
     core:
@@ -47,3 +48,13 @@ resources:
 # Danach agentConfig.plugins.optional.trivy auf true setzen um das Plugin zu aktivieren.
 trivy-operator:
   enabled: false
+
+# Falco — https://falcosecurity.github.io/charts/
+# Wenn enabled: true, wird Falco als Sub-Chart mitinstalliert.
+# Danach agentConfig.plugins.optional.falco auf true setzen um das Plugin zu aktivieren.
+# json_output: true ist Pflicht damit der FalcoPlugin die Alerts parsen kann.
+falco:
+  enabled: false
+  falco:
+    json_output: true
+    json_include_output_property: true

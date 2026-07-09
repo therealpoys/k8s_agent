@@ -1,24 +1,41 @@
-# Current Feature
+# Current Feature: Schritt 13 — FalcoPlugin
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+FalcoPlugin: Liest Falco-Runtime-Security-Alerts aus Pod-Logs im Falco-Namespace, parst JSON-Events, dedupliziert nach Regelname und erzeugt Findings für das LLM.
 
 ## Goals
 
-<!-- Add goals here -->
+- `src/config.py`: `falco_namespace: str` als neues optionales Feld (Default `"falco"`)
+- `config.yaml.example`: `falco_namespace` unter `kubernetes:` dokumentieren
+- `src/plugins/falco.py`: `FalcoPlugin` implementieren — Pod-Logs lesen, JSON parsen, filtern (nur WARNING+), deduplizieren nach Regelname, Findings bauen
+- `src/plugins/__init__.py`: `FalcoPlugin` in `PLUGIN_REGISTRY` registrieren
+- Helm `clusterrole.yaml`: Kommentar dass Falco-Namespace durch bestehende RBAC abgedeckt ist
+- Helm `values.yaml`: `falco_namespace: falco` im `agentConfig.kubernetes`-Block ergänzen
+- `tests/test_falco_plugin.py`: 13 neue Tests (leere Pod-Liste, 403/404, non-JSON-Zeilen, Severity-Mapping, Deduplication, Multi-Pod, output_fields in raw)
+- `tests/test_config.py`: `falco_namespace` zum Config-Fixture hinzufügen
+- Alle 87 bestehenden Tests bleiben grün
 
 ## Done When
 
-<!-- Add done criteria here -->
+- `falco: true` in `config.yaml` → `python agent.py` liefert Falco-Findings wenn Falco im Cluster läuft
+- Kein Falco installiert → stiller `debug`-Log, kein Crash
+- `helm upgrade` + `kubectl logs` zeigen `[CRITICAL]`/`[HIGH]` Findings korrekt dedupliziert
+- Alle bestehenden + neue Tests grün
 
 ## Notes
 
-<!-- Add notes here -->
+- `json_output: true` ist Pflicht auf Falco-Seite (Standard-Helm-Default)
+- Nicht-JSON-Zeilen (Startup, Kernel-Modul-Load) werden still ignoriert
+- Severity-Map: Emergency/Alert/Critical → CRITICAL; Error/Warning → HIGH; Notice und darunter werden gefiltert
+- Deduplication nach Regelname: erstes Event als Repräsentant, Gesamtanzahl als `count`
+- `output_fields` wird als `raw` mitgegeben (Pod-Name, Prozess, Datei für LLM sichtbar)
+- Label-Selector: `app.kubernetes.io/name=falco`
+- Helm-RBAC: `pods/list/get` und `pods/log/get` bereits cluster-weit vorhanden — kein neuer Block nötig, nur Kommentar
 
 ## History
 

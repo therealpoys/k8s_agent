@@ -12,6 +12,8 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "get"]
+  {{- /* FalcoPlugin: pods/list/get und pods/log/get sind bereits cluster-weit oben enthalten.
+         Kein zusätzlicher RBAC-Block nötig — der Falco-Namespace ist damit abgedeckt. */}}
   {{- if .Values.agentConfig.plugins.optional.trivy }}
   - apiGroups: ["aquasecurity.github.io"]
     resources: ["vulnerabilityreports", "configauditreports", "exposedsecretreports"]
