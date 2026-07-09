@@ -13,6 +13,7 @@ kubernetes:
   namespaces:
     - default
   log_lines: 100
+  falco_namespace: falco
 
 plugins:
   core:
@@ -64,6 +65,7 @@ class TestLoadConfigHappyPath:
         cfg = _call_load(tmp_path, MINIMAL_YAML)
         assert cfg.namespaces == ["default"]
         assert cfg.log_lines == 100
+        assert cfg.falco_namespace == "falco"
 
     def test_plugins_fields(self, tmp_path):
         cfg = _call_load(tmp_path, MINIMAL_YAML)

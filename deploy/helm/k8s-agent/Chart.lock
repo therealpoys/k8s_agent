@@ -2,5 +2,8 @@ dependencies:
 - name: trivy-operator
   repository: https://aquasecurity.github.io/helm-charts/
   version: 0.28.1
-digest: sha256:39f4c24a311a09a821ee589f3069e7324af0ee326b613072bb76face46ba5b71
-generated: "2026-06-14T09:19:07.221985+02:00"
+- name: falco
+  repository: https://falcosecurity.github.io/charts/
+  version: 4.21.2
+digest: sha256:a23a4f02c9d40c65764a5a917cc34ef9d33c42e562e5393e2895a889a86457c6
+generated: "2026-06-28T18:31:18.570323+02:00"

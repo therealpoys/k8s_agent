@@ -22,6 +22,8 @@ class Config:
     namespaces: list[str]
     log_lines: int
 
+    falco_namespace: str
+
     core_plugins: list[str]
     optional_plugins: dict[str, bool]
 
@@ -61,6 +63,7 @@ def _load_config() -> Config:
         llm_base_url=llm_base_url,
         namespaces=k8s["namespaces"],
         log_lines=k8s["log_lines"],
+        falco_namespace=k8s.get("falco_namespace", "falco"),
         core_plugins=plugins["core"],
         optional_plugins=plugins.get("optional", {}),
         outputs=raw["outputs"],

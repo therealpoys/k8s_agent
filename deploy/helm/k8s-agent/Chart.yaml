@@ -9,3 +9,7 @@ dependencies:
     version: "0.28.1"
     repository: https://aquasecurity.github.io/helm-charts/
     condition: trivy-operator.enabled
+  - name: falco
+    version: "4.21.2"
+    repository: https://falcosecurity.github.io/charts/
+    condition: falco.enabled
