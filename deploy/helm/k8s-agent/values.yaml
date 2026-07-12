@@ -20,6 +20,9 @@ agentConfig:
     log_lines: 100
     falco_namespace: falco
 
+  prometheus:
+    url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+
   plugins:
     core:
       - pod_logs
@@ -58,3 +61,15 @@ falco:
   falco:
     json_output: true
     json_include_output_property: true
+
+# Prometheus (kube-prometheus-stack) — https://github.com/prometheus-community/helm-charts
+# Wenn enabled: true, wird Prometheus (inkl. Operator) als Sub-Chart mitinstalliert.
+# Danach agentConfig.plugins.optional.prometheus auf true setzen um das Plugin zu aktivieren.
+# agentConfig.prometheus.url ggf. an den tatsächlichen Release-Namespace anpassen.
+# Grafana/Alertmanager werden vom PrometheusPlugin nicht gebraucht, daher deaktiviert.
+kube-prometheus-stack:
+  enabled: false
+  grafana:
+    enabled: false
+  alertmanager:
+    enabled: false

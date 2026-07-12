@@ -12,7 +12,7 @@ _SEVERITY_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
 _PROMPT_TEMPLATE = """You are a Kubernetes observability agent. Analyze the following findings from a cluster and respond with a JSON object only — no markdown, no explanation.
 
-Each finding includes pod metadata, runtime status, resource configuration, Kubernetes events, and recent logs.
+Findings come from different sources (pod logs, Prometheus alerts, Trivy vulnerability scans, Falco runtime alerts), each with a "Resource:" line identifying the affected pod or object.
 
 When analyzing, actively use all available context:
 - High restart_count or state "waiting:CrashLoopBackOff" → likely CrashLoop
@@ -20,6 +20,7 @@ When analyzing, actively use all available context:
 - Missing limits with high resource usage → configuration issue
 - Missing probes → availability risk
 - Warning events often reveal the direct root cause — prioritize them over log content
+- Correlate findings that share the same Resource across sources (e.g. a Prometheus alert and pod logs for the same pod) into a single root cause instead of treating them independently
 
 Findings:
 {findings}
@@ -104,7 +105,7 @@ def _fmt_resources(r: dict) -> str:
     return ", ".join(f"{k}={v}" for k, v in r.items())
 
 
-def _format_finding_block(i: int, f: Finding) -> str:
+def _format_pod_logs_finding(i: int, f: Finding) -> str:
     raw = f.raw or {}
     pod_name = raw.get("pod_name", "?")
     container = raw.get("container", "?")
@@ -152,6 +153,76 @@ def _format_finding_block(i: int, f: Finding) -> str:
     lines.append(_clean_log(f.message, max_chars=2000))
 
     return "\n".join(lines)
+
+
+def _format_prometheus_finding(i: int, f: Finding) -> str:
+    raw = f.raw or {}
+    labels = raw.get("labels", {})
+
+    lines = [
+        f"Finding #{i} [{f.severity.upper()}] (Prometheus Alert)",
+        f"Resource: {f.resource} (namespace: {f.namespace or 'n/a'})",
+        f"Alert state: {raw.get('state', 'unknown')}",
+    ]
+    if labels:
+        lines.append("Labels: " + ", ".join(f"{k}={v}" for k, v in labels.items()))
+    lines.append(f.message)
+
+    return "\n".join(lines)
+
+
+def _format_trivy_finding(i: int, f: Finding) -> str:
+    raw = f.raw or {}
+
+    lines = [
+        f"Finding #{i} [{f.severity.upper()}] (Trivy Vulnerability Scan)",
+        f"Resource: {f.resource} (namespace: {f.namespace})",
+        f.message,
+    ]
+
+    top_vulns = raw.get("top_vulnerabilities", [])
+    if top_vulns:
+        lines.append("Top CVEs:")
+        for v in top_vulns:
+            lines.append(
+                f"  {v.get('id', '?')} [{v.get('severity', '?')}] {v.get('title', '')} "
+                f"(installed: {v.get('installedVersion', '?')}, fixed: {v.get('fixedVersion') or 'none'})"
+            )
+
+    return "\n".join(lines)
+
+
+def _format_falco_finding(i: int, f: Finding) -> str:
+    return "\n".join(
+        [
+            f"Finding #{i} [{f.severity.upper()}] (Falco Runtime Alert)",
+            f"Resource: {f.resource} (namespace: {f.namespace})",
+            f.message,
+        ]
+    )
+
+
+def _format_generic_finding(i: int, f: Finding) -> str:
+    return "\n".join(
+        [
+            f"Finding #{i} [{f.severity.upper()}] (source: {f.source})",
+            f"Resource: {f.resource} (namespace: {f.namespace})",
+            f.message,
+        ]
+    )
+
+
+_FINDING_FORMATTERS = {
+    "pod_logs": _format_pod_logs_finding,
+    "prometheus": _format_prometheus_finding,
+    "trivy": _format_trivy_finding,
+    "falco": _format_falco_finding,
+}
+
+
+def _format_finding_block(i: int, f: Finding) -> str:
+    formatter = _FINDING_FORMATTERS.get(f.source, _format_generic_finding)
+    return formatter(i, f)
 
 
 def analyze(findings: list[Finding]) -> Alert:
