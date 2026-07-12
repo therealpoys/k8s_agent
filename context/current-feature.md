@@ -1,40 +1,16 @@
-# Current Feature: Schritt 14 — PrometheusPlugin
+# Current Feature
 
 ## Status
 
-In Progress
-
-## Feature
-
-PrometheusPlugin: Ruft die eingebaute Prometheus-HTTP-API (`GET /api/v1/alerts`) auf, filtert auf `state: firing`, mappt `labels.severity` auf die interne Severity und erzeugt Findings für das LLM.
+Not Started
 
 ## Goals
 
-- `src/config.py`: `prometheus_url: str` als neues Feld; `_load_config()` liest `prometheus.url` aus YAML mit Default `http://prometheus-operated.monitoring.svc.cluster.local:9090`, kein `KeyError` bei fehlendem Block
-- `config.yaml.example`: eigener Top-Level-Block `prometheus:` mit `url`; veraltete Kommentare `# noch nicht implementiert` bei `falco` und `prometheus` korrigieren
-- `requirements.txt`: `requests==2.34.2` ergänzen
-- `src/plugins/prometheus.py`: `PrometheusPlugin` implementieren — HTTP-Call gegen `/api/v1/alerts`, nur `state: firing`, Severity-Mapping (`critical`→CRITICAL, `warning`→HIGH, `info`→info, unbekannt→HIGH), Finding-Bau mit `resource` aus `labels.pod` (Fallback `labels.instance`), `message` aus `alertname` + `annotations.summary`/`description`, `raw` mit Labels/Annotations/State
-- `src/plugins/__init__.py`: `PrometheusPlugin` in `PLUGIN_REGISTRY` registrieren
-- `deploy/helm/k8s-agent/values.yaml`: `prometheus.url` im `agentConfig`-Block ergänzen (kein neues RBAC nötig — nur HTTP, kein K8s-API-Zugriff)
-- `tests/unit/test_prometheus_plugin.py`: 13 neue Tests (Connection-Error, Timeout, HTTP-Error, invalid JSON, leere Alerts, pending übersprungen, Severity-Mapping critical/warning/unknown, mehrere firing Alerts, message-Format, resource aus pod/instance, raw enthält labels+annotations)
-- `tests/unit/test_config.py`: `prometheus_url` zum Config-Fixture hinzufügen (Default + explizit gesetzte URL)
-- Alle bestehenden Tests bleiben grün
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- Eigener Top-Level-YAML-Block `prometheus:`, da die URL kein Kubernetes-Konzept ist (anders als `falco_namespace`)
-- Nur `state: firing` erzeugt Findings — `pending` (for:-Dauer noch nicht überschritten) wird ignoriert, sonst Flooding
-- Severity folgt kube-prometheus-stack-Konvention; unbekannt/fehlend → `HIGH` statt stillem Verschwinden
-- Verbindungsfehler/Timeout/ungültiges JSON: `warning`-Log, `[]`, kein Crash — konsistent mit Falco/Trivy
-- Kein `__init__` mit K8s-Client nötig — Plugin braucht nur `requests`
-- Kein neuer ClusterRole-Eintrag in Helm, da kein Kubernetes-API-Zugriff
-
-## Done When
-
-- `prometheus: true` in `config.yaml` mit gültiger `prometheus.url` → `python agent.py` liefert Prometheus-Findings wenn firing Alerts existieren
-- Prometheus nicht erreichbar → stiller `warning`-Log, kein Crash
-- `helm upgrade` + `kubectl logs` zeigen `[CRITICAL]`/`[HIGH]` Findings mit Alertname und Summary im `message`-Feld
-- Alle bestehenden + neue Tests grün
+<!-- Populated by /feature load -->
 
 ## History
 
@@ -55,3 +31,4 @@ PrometheusPlugin: Ruft die eingebaute Prometheus-HTTP-API (`GET /api/v1/alerts`)
 - **Schritt 11 — In-Cluster Deployment mit Helm**: `Dockerfile` (python:3.13-slim, keine Config/Secrets eingebaut); `deploy/helm/k8s-agent/` mit Chart.yaml, values.yaml, `_helpers.tpl`; Templates: ServiceAccount, read-only ClusterRole (pods/pods-log/events), ClusterRoleBinding, ConfigMap (agentConfig → config.yaml via toYaml), Deployment (subPath-Mount, existingSecret optional via `{{- if }}`); `values.local.yaml` gitignored für lokales Ollama via `host.internal:11434`; erfolgreich deployed und verifiziert im OrbStack-Cluster
 - **Schritt 12 — Plugin-Registry, TrivyPlugin & CronJob**: `PLUGIN_REGISTRY` in `src/plugins/__init__.py`; `load_plugins()` in `src/plugins/loader.py` liest `core`/`optional` aus Config; `src/plugins/trivy.py` liest VulnerabilityReport-CRDs (nur HIGH/CRITICAL); `src/graph.py` nutzt `load_plugins()` statt hartkodiertem Plugin; Helm: Deployment → CronJob (`schedule: "* * * * *"`, `concurrencyPolicy: Forbid`); Trivy Operator als Helm-Dependency (`condition: trivy-operator.enabled`); ClusterRole konditionell um Trivy-RBAC erweitert; `loop_interval_seconds` aus Config + agent.py entfernt; 87 Tests grün
 - **Schritt 13 — FalcoPlugin**: `src/plugins/falco.py` mit `FalcoPlugin`; liest Pod-Logs aus `falco_namespace` (Default `falco`, Label-Selector `app.kubernetes.io/name=falco`), parst JSON-Events, filtert auf WARNING+ (Severity-Map Emergency/Alert/Critical→CRITICAL, Error/Warning→HIGH, Notice+ gefiltert), dedupliziert nach Regelname (erstes Event als Repräsentant, `count`), `output_fields` als `raw` mitgegeben; `falco_namespace` in `src/config.py`/`config.yaml.example`/Helm `values.yaml` ergänzt; `FalcoPlugin` in `PLUGIN_REGISTRY` registriert; Helm `clusterrole.yaml` kommentiert (bestehendes RBAC deckt Falco-Namespace ab); 100 Tests grün
+- **Schritt 14 — PrometheusPlugin**: `src/plugins/prometheus.py` mit `PrometheusPlugin`; ruft `GET /api/v1/alerts` gegen `prometheus_url` auf, nur `state: firing`, Severity-Mapping (`critical`→CRITICAL, `warning`→HIGH, `info`→info, unbekannt→HIGH), `resource` aus `labels.pod` (Fallback `labels.instance`), `raw` mit Labels/Annotations/State; Verbindungsfehler/Timeout/ungültiges JSON → `warning`-Log, `[]`, kein Crash; `prometheus_url` in `src/config.py`/`config.yaml.example` (eigener Top-Level-Block `prometheus:`) ergänzt; `PrometheusPlugin` in `PLUGIN_REGISTRY` registriert; Helm: optionaler `kube-prometheus-stack` Sub-Chart (`condition: kube-prometheus-stack.enabled`, Grafana/Alertmanager deaktiviert) analog zu Trivy/Falco; `analyzer.py` `_format_finding_block()` auf Quellen-spezifische Formatter (`pod_logs`/`prometheus`/`trivy`/`falco`/generisch) umgestellt, damit alle Plugin-Findings korrekt im gemeinsamen LLM-Prompt landen und über `Resource:` korrelierbar sind; 116 Tests grün
