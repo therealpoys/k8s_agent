@@ -30,6 +30,11 @@ YAML_WITH_BASE_URL = MINIMAL_YAML.replace(
     "  timeout_seconds: 30\n  base_url: http://localhost:11434",
 )
 
+YAML_WITH_PROMETHEUS_URL = MINIMAL_YAML.replace(
+    "plugins:",
+    "prometheus:\n  url: http://localhost:9090\n\nplugins:",
+)
+
 
 def _load(yaml_content: str):
     """Import _load_config fresh with a tmp config.yaml."""
@@ -66,6 +71,14 @@ class TestLoadConfigHappyPath:
         assert cfg.namespaces == ["default"]
         assert cfg.log_lines == 100
         assert cfg.falco_namespace == "falco"
+
+    def test_prometheus_url_default(self, tmp_path):
+        cfg = _call_load(tmp_path, MINIMAL_YAML)
+        assert cfg.prometheus_url == "http://prometheus-operated.monitoring.svc.cluster.local:9090"
+
+    def test_prometheus_url_explicit(self, tmp_path):
+        cfg = _call_load(tmp_path, YAML_WITH_PROMETHEUS_URL)
+        assert cfg.prometheus_url == "http://localhost:9090"
 
     def test_plugins_fields(self, tmp_path):
         cfg = _call_load(tmp_path, MINIMAL_YAML)

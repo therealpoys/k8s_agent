@@ -24,6 +24,8 @@ class Config:
 
     falco_namespace: str
 
+    prometheus_url: str
+
     core_plugins: list[str]
     optional_plugins: dict[str, bool]
 
@@ -51,6 +53,8 @@ def _load_config() -> Config:
     except KeyError as e:
         raise KeyError(f"Pflichtfeld fehlt in config.yaml: {e}") from e
 
+    prometheus = raw.get("prometheus", {})
+
     # Env-Vars überschreiben config.yaml — sinnvoll für K8s Secrets/ConfigMaps
     llm_base_url = os.getenv("LLM_BASE_URL") or llm.get("base_url")
     llm_model = os.getenv("LLM_MODEL") or llm["model"]
@@ -64,6 +68,9 @@ def _load_config() -> Config:
         namespaces=k8s["namespaces"],
         log_lines=k8s["log_lines"],
         falco_namespace=k8s.get("falco_namespace", "falco"),
+        prometheus_url=prometheus.get(
+            "url", "http://prometheus-operated.monitoring.svc.cluster.local:9090"
+        ),
         core_plugins=plugins["core"],
         optional_plugins=plugins.get("optional", {}),
         outputs=raw["outputs"],
