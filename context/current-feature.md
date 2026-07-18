@@ -1,29 +1,16 @@
-# Current Feature: Schritt 15 — K8sEventsPlugin
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- `src/plugins/k8s_events.py` mit `K8sEventsPlugin(BasePlugin)`: liest Warning-Events (`field_selector="type=Warning"`) für alle konfigurierten Namespaces via `list_namespaced_event`
-- Fehlerbehandlung analog bestehender Plugins: 401/403 → error-Log + `[]`, 404 → debug-Log + `[]`, generisch → warning-Log + `[]`, nie crashen
-- Dedup der Events nach `(kind, name, reason)`, `count` über alle Vorkommen summiert (inkl. `event.count`)
-- `resource` aus `involvedObject.kind/name` (z.B. `deployment/my-app`) statt nur Pods — deckt Deployment/ReplicaSet/Node/PVC/etc. ab
-- Severity fest `"HIGH"` (Events sind bereits serverseitig auf `type=Warning` gefiltert)
-- Registrierung in `src/plugins/__init__.py` → `PLUGIN_REGISTRY["k8s_events"]`
-- `k8s_events` als neues **Core-Plugin** in `config.yaml.example` und `deploy/helm/k8s-agent/values.yaml` (`agentConfig.plugins.core`) ergänzen
-- `src/analyzer.py`: dedizierter `_format_k8s_events_finding()` Formatter + Eintrag in `_FINDING_FORMATTERS`
-- Neue Testdatei `tests/test_k8s_events_plugin.py` mit den in der Spec gelisteten Testfällen (leere Ergebnisse, 403/404, Multi-Namespace, Dedup/Count-Summierung, Kind/Name-Mapping, Severity, Message-Format)
-- `tests/test_analyzer.py`: Test für `_format_k8s_events_finding` ergänzen
-- Alle bestehenden 116 Tests bleiben grün
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- Kontext: Schritt 14 abgeschlossen, vier Plugins aktiv (`pod_logs` core, `trivy`/`falco`/`prometheus` optional). `pod_logs.py` liest Events bereits pro Pod (`_get_pod_events()`), aber nur für existierende Pods — Events für andere Objekttypen (Deployment, ReplicaSet, Node, PVC, ...) und Events für nie gestartete Pods (`FailedScheduling`, `FailedMount`) gehen verloren. Dieser Schritt schließt die Lücke als eigenständiges Core-Plugin.
-- RBAC: `events: list/get` ist bereits cluster-weit in der ClusterRole vorhanden (Schritt 11) — **keine Helm-RBAC-Änderung nötig**, nur `values.yaml` Core-Liste.
-- Vollständiger Referenz-Code inkl. Design-Entscheidungen und Testfall-Liste steht in `context/prompts/step15_k8s_events_plugin.md`.
-- "Done when": `python agent.py` mit `k8s_events` in `plugins.core` liefert `[HIGH]`-Findings für Warning-Events (z.B. `FailedScheduling`, `BackOff`, `FailedMount`), dedupliziert nach `(kind, name, reason)`, für alle konfigurierten Namespaces, auch für Nicht-Pod-Objekte.
+<!-- Populated by /feature load -->
 
 ## History
 
@@ -45,3 +32,4 @@ In Progress
 - **Schritt 12 — Plugin-Registry, TrivyPlugin & CronJob**: `PLUGIN_REGISTRY` in `src/plugins/__init__.py`; `load_plugins()` in `src/plugins/loader.py` liest `core`/`optional` aus Config; `src/plugins/trivy.py` liest VulnerabilityReport-CRDs (nur HIGH/CRITICAL); `src/graph.py` nutzt `load_plugins()` statt hartkodiertem Plugin; Helm: Deployment → CronJob (`schedule: "* * * * *"`, `concurrencyPolicy: Forbid`); Trivy Operator als Helm-Dependency (`condition: trivy-operator.enabled`); ClusterRole konditionell um Trivy-RBAC erweitert; `loop_interval_seconds` aus Config + agent.py entfernt; 87 Tests grün
 - **Schritt 13 — FalcoPlugin**: `src/plugins/falco.py` mit `FalcoPlugin`; liest Pod-Logs aus `falco_namespace` (Default `falco`, Label-Selector `app.kubernetes.io/name=falco`), parst JSON-Events, filtert auf WARNING+ (Severity-Map Emergency/Alert/Critical→CRITICAL, Error/Warning→HIGH, Notice+ gefiltert), dedupliziert nach Regelname (erstes Event als Repräsentant, `count`), `output_fields` als `raw` mitgegeben; `falco_namespace` in `src/config.py`/`config.yaml.example`/Helm `values.yaml` ergänzt; `FalcoPlugin` in `PLUGIN_REGISTRY` registriert; Helm `clusterrole.yaml` kommentiert (bestehendes RBAC deckt Falco-Namespace ab); 100 Tests grün
 - **Schritt 14 — PrometheusPlugin**: `src/plugins/prometheus.py` mit `PrometheusPlugin`; ruft `GET /api/v1/alerts` gegen `prometheus_url` auf, nur `state: firing`, Severity-Mapping (`critical`→CRITICAL, `warning`→HIGH, `info`→info, unbekannt→HIGH), `resource` aus `labels.pod` (Fallback `labels.instance`), `raw` mit Labels/Annotations/State; Verbindungsfehler/Timeout/ungültiges JSON → `warning`-Log, `[]`, kein Crash; `prometheus_url` in `src/config.py`/`config.yaml.example` (eigener Top-Level-Block `prometheus:`) ergänzt; `PrometheusPlugin` in `PLUGIN_REGISTRY` registriert; Helm: optionaler `kube-prometheus-stack` Sub-Chart (`condition: kube-prometheus-stack.enabled`, Grafana/Alertmanager deaktiviert) analog zu Trivy/Falco; `analyzer.py` `_format_finding_block()` auf Quellen-spezifische Formatter (`pod_logs`/`prometheus`/`trivy`/`falco`/generisch) umgestellt, damit alle Plugin-Findings korrekt im gemeinsamen LLM-Prompt landen und über `Resource:` korrelierbar sind; 116 Tests grün
+- **Schritt 15 — K8sEventsPlugin**: `src/plugins/k8s_events.py` mit `K8sEventsPlugin`; liest Warning-Events (`field_selector="type=Warning"`) aller konfigurierten Namespaces via `list_namespaced_event`, unabhängig vom `involvedObject`-Typ (Pod, Deployment, ReplicaSet, Node, PVC, ...) — schließt die Lücke die `pod_logs.py` offen lässt (Events nur für existierende, durchlaufene Pods); Dedup nach `(kind, name, reason)` mit summiertem `count`; Severity fest `HIGH`; 401/403 → error-Log, 404 → debug-Log, generisch → warning-Log, jeweils `[]`, nie crashen; als neues Core-Plugin registriert (`config.yaml.example`, Helm `values.yaml`) — RBAC bereits seit Schritt 11 vorhanden; `analyzer.py` um `_format_k8s_events_finding()` ergänzt; im Review Ternary-Bug bei `reporting_component` (falsches Operator-Precedence, ignorierte den Wert wenn `event.source` `None` war) gefunden und gefixt; 130 Tests grün. Enthält zusätzlich vorher unstaged Helm-Chart-Härtung (Dependency-Updates, `labels`/`selectorLabels`-Helper, CronJob `securityContext` + `tmp`-Volume), die bereits vor diesem Feature auf `main` lag
