@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.models import Alert, Finding
-from src.analyzer import _highest_severity, analyze
+from src.analyzer import _format_k8s_events_finding, _highest_severity, analyze
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +58,28 @@ class TestHighestSeverity:
     def test_all_unknown_returns_info(self):
         findings = [_make_finding("bogus"), _make_finding("also-bogus")]
         assert _highest_severity(findings) == "info"
+
+
+# ---------------------------------------------------------------------------
+# _format_k8s_events_finding
+# ---------------------------------------------------------------------------
+
+class TestFormatK8sEventsFinding:
+    def test_format_k8s_events_finding_includes_reason_and_count(self):
+        finding = Finding(
+            source="k8s_events",
+            namespace="default",
+            resource="pod/my-pod",
+            severity="HIGH",
+            message="FailedMount: unable to mount volume (3x)",
+            timestamp=datetime(2026, 1, 1),
+            raw={"reason": "FailedMount", "count": 3},
+        )
+
+        result = _format_k8s_events_finding(1, finding)
+
+        assert "FailedMount" in result
+        assert "3" in result
 
 
 # ---------------------------------------------------------------------------

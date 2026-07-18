@@ -202,6 +202,18 @@ def _format_falco_finding(i: int, f: Finding) -> str:
     )
 
 
+def _format_k8s_events_finding(i: int, f: Finding) -> str:
+    raw = f.raw or {}
+    return "\n".join(
+        [
+            f"Finding #{i} [{f.severity.upper()}] (K8s Event)",
+            f"Resource: {f.resource} (namespace: {f.namespace})",
+            f"Reason: {raw.get('reason', '?')} | Count: {raw.get('count', 1)}",
+            f.message,
+        ]
+    )
+
+
 def _format_generic_finding(i: int, f: Finding) -> str:
     return "\n".join(
         [
@@ -214,6 +226,7 @@ def _format_generic_finding(i: int, f: Finding) -> str:
 
 _FINDING_FORMATTERS = {
     "pod_logs": _format_pod_logs_finding,
+    "k8s_events": _format_k8s_events_finding,
     "prometheus": _format_prometheus_finding,
     "trivy": _format_trivy_finding,
     "falco": _format_falco_finding,

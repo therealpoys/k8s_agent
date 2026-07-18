@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Schritt 15 — K8sEventsPlugin
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- `src/plugins/k8s_events.py` mit `K8sEventsPlugin(BasePlugin)`: liest Warning-Events (`field_selector="type=Warning"`) für alle konfigurierten Namespaces via `list_namespaced_event`
+- Fehlerbehandlung analog bestehender Plugins: 401/403 → error-Log + `[]`, 404 → debug-Log + `[]`, generisch → warning-Log + `[]`, nie crashen
+- Dedup der Events nach `(kind, name, reason)`, `count` über alle Vorkommen summiert (inkl. `event.count`)
+- `resource` aus `involvedObject.kind/name` (z.B. `deployment/my-app`) statt nur Pods — deckt Deployment/ReplicaSet/Node/PVC/etc. ab
+- Severity fest `"HIGH"` (Events sind bereits serverseitig auf `type=Warning` gefiltert)
+- Registrierung in `src/plugins/__init__.py` → `PLUGIN_REGISTRY["k8s_events"]`
+- `k8s_events` als neues **Core-Plugin** in `config.yaml.example` und `deploy/helm/k8s-agent/values.yaml` (`agentConfig.plugins.core`) ergänzen
+- `src/analyzer.py`: dedizierter `_format_k8s_events_finding()` Formatter + Eintrag in `_FINDING_FORMATTERS`
+- Neue Testdatei `tests/test_k8s_events_plugin.py` mit den in der Spec gelisteten Testfällen (leere Ergebnisse, 403/404, Multi-Namespace, Dedup/Count-Summierung, Kind/Name-Mapping, Severity, Message-Format)
+- `tests/test_analyzer.py`: Test für `_format_k8s_events_finding` ergänzen
+- Alle bestehenden 116 Tests bleiben grün
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Kontext: Schritt 14 abgeschlossen, vier Plugins aktiv (`pod_logs` core, `trivy`/`falco`/`prometheus` optional). `pod_logs.py` liest Events bereits pro Pod (`_get_pod_events()`), aber nur für existierende Pods — Events für andere Objekttypen (Deployment, ReplicaSet, Node, PVC, ...) und Events für nie gestartete Pods (`FailedScheduling`, `FailedMount`) gehen verloren. Dieser Schritt schließt die Lücke als eigenständiges Core-Plugin.
+- RBAC: `events: list/get` ist bereits cluster-weit in der ClusterRole vorhanden (Schritt 11) — **keine Helm-RBAC-Änderung nötig**, nur `values.yaml` Core-Liste.
+- Vollständiger Referenz-Code inkl. Design-Entscheidungen und Testfall-Liste steht in `context/prompts/step15_k8s_events_plugin.md`.
+- "Done when": `python agent.py` mit `k8s_events` in `plugins.core` liefert `[HIGH]`-Findings für Warning-Events (z.B. `FailedScheduling`, `BackOff`, `FailedMount`), dedupliziert nach `(kind, name, reason)`, für alle konfigurierten Namespaces, auch für Nicht-Pod-Objekte.
 
 ## History
 
