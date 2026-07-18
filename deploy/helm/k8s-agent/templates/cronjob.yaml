@@ -3,17 +3,21 @@ kind: CronJob
 metadata:
   name: {{ include "k8s-agent.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "k8s-agent.labels" . | nindent 4 }}
 spec:
   schedule: {{ .Values.schedule | quote }}
   concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
       template:
         metadata:
           labels:
-            app: {{ include "k8s-agent.fullname" . }}
+            {{- include "k8s-agent.selectorLabels" . | nindent 12 }}
         spec:
           restartPolicy: OnFailure
           serviceAccountName: {{ include "k8s-agent.fullname" . }}
@@ -29,11 +33,20 @@ spec:
                     name: {{ .Values.existingSecret }}
               {{- end }}
 
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                capabilities:
+                  drop: ["ALL"]
+
               volumeMounts:
                 - name: config
                   mountPath: /app/config.yaml
                   subPath: config.yaml
                   readOnly: true
+                - name: tmp
+                  mountPath: /tmp
 
               resources:
                 {{- toYaml .Values.resources | nindent 16 }}
@@ -42,3 +55,5 @@ spec:
             - name: config
               configMap:
                 name: {{ include "k8s-agent.fullname" . }}-config
+            - name: tmp
+              emptyDir: {}

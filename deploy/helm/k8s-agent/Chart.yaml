@@ -1,19 +1,19 @@
 apiVersion: v2
 name: k8s-agent
 description: Kubernetes Observability Agent
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.1.0"
 
 dependencies:
   - name: trivy-operator
-    version: "0.28.1"
+    version: "0.34.0"
     repository: https://aquasecurity.github.io/helm-charts/
     condition: trivy-operator.enabled
   - name: falco
-    version: "4.21.2"
+    version: "9.1.0"
     repository: https://falcosecurity.github.io/charts/
     condition: falco.enabled
   - name: kube-prometheus-stack
-    version: "87.13.0"
+    version: "87.15.2"
     repository: https://prometheus-community.github.io/helm-charts
     condition: kube-prometheus-stack.enabled

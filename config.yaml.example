@@ -15,6 +15,7 @@ prometheus:
 plugins:
   core:
     - pod_logs        # immer aktiv
+    - k8s_events      # immer aktiv
   optional:
     trivy: false      # Trivy Operator muss im Cluster installiert sein
     falco: false      # Falco DaemonSet muss im Cluster laufen (json_output: true)

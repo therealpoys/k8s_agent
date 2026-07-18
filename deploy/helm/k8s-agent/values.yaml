@@ -4,6 +4,9 @@ image:
   pullPolicy: IfNotPresent
 
 schedule: "* * * * *"
+# Harter Timeout pro Lauf — verhindert dass ein hängender Job wegen
+# concurrencyPolicy: Forbid alle folgenden Läufe blockiert.
+activeDeadlineSeconds: 300
 
 # Wird als config.yaml in den Container gemountet
 agentConfig:
@@ -23,9 +26,15 @@ agentConfig:
   prometheus:
     url: http://prometheus-operated.monitoring.svc.cluster.local:9090
 
+  # Zwei unabhängige Schalter pro optionalem Plugin:
+  #   1. agentConfig.plugins.optional.<name>  → Plugin im Agent aktiv?
+  #   2. <name>.enabled weiter unten          → Software als Sub-Chart HIER mitinstallieren?
+  # Getrennt, weil z.B. Trivy/Prometheus schon anderswo im Cluster laufen können —
+  # dann Plugin auf true, Sub-Chart-Install auf false.
   plugins:
     core:
       - pod_logs
+      - k8s_events
     optional:
       trivy: false
       falco: false
@@ -47,14 +56,15 @@ resources:
     memory: 256Mi
 
 # Trivy Operator — https://aquasecurity.github.io/helm-charts/
-# Wenn enabled: true, wird der Trivy Operator als Sub-Chart mitinstalliert.
-# Danach agentConfig.plugins.optional.trivy auf true setzen um das Plugin zu aktivieren.
+# enabled: true installiert den Trivy Operator als Sub-Chart dieses Charts.
+# Läuft Trivy bereits woanders im Cluster, hier auf false lassen und stattdessen
+# nur agentConfig.plugins.optional.trivy oben auf true setzen.
 trivy-operator:
   enabled: false
 
 # Falco — https://falcosecurity.github.io/charts/
-# Wenn enabled: true, wird Falco als Sub-Chart mitinstalliert.
-# Danach agentConfig.plugins.optional.falco auf true setzen um das Plugin zu aktivieren.
+# enabled: true installiert Falco als Sub-Chart dieses Charts (siehe trivy-operator-
+# Kommentar oben zur Trennung von Sub-Chart-Install und Plugin-Aktivierung).
 # json_output: true ist Pflicht damit der FalcoPlugin die Alerts parsen kann.
 falco:
   enabled: false
@@ -63,9 +73,10 @@ falco:
     json_include_output_property: true
 
 # Prometheus (kube-prometheus-stack) — https://github.com/prometheus-community/helm-charts
-# Wenn enabled: true, wird Prometheus (inkl. Operator) als Sub-Chart mitinstalliert.
-# Danach agentConfig.plugins.optional.prometheus auf true setzen um das Plugin zu aktivieren.
-# agentConfig.prometheus.url ggf. an den tatsächlichen Release-Namespace anpassen.
+# enabled: true installiert Prometheus (inkl. Operator) als Sub-Chart dieses Charts
+# (siehe trivy-operator-Kommentar oben zur Trennung von Sub-Chart-Install und
+# Plugin-Aktivierung). agentConfig.prometheus.url ggf. an den tatsächlichen
+# Release-Namespace anpassen — auch wenn Prometheus extern läuft.
 # Grafana/Alertmanager werden vom PrometheusPlugin nicht gebraucht, daher deaktiviert.
 kube-prometheus-stack:
   enabled: false
