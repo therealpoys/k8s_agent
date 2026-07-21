@@ -1,0 +1,17 @@
+apiVersion: v2
+name: k8s-agent
+description: Kubernetes Observability Agent powered by LLM
+type: application
+version: 0.1.0
+appVersion: "latest"
+
+dependencies:
+  - name: falco
+    version: "4.x.x"
+    repository: "https://falcosecurity.github.io/charts"
+    condition: falco.enabled
+
+  - name: trivy-operator
+    version: "0.x.x"
+    repository: "https://aquasecurity.github.io/helm-charts/"
+    condition: trivy.enabled

@@ -1,24 +1,41 @@
-# Current Feature
+# Current Feature: Schritt 11 — Helm Chart
 
 ## Status
 
-Not Started
+In Progress
 
 ## Feature
 
-<!-- Add feature here -->
+Helm Chart unter `helm/k8s-agent/` erstellen, das die drei bestehenden Kubernetes-Manifeste (`k8s/deployment.yaml`, `k8s/configmap.yaml`, `k8s/rbac.yaml`) parametrisierbar abbildet.
 
 ## Goals
 
-<!-- Add goals here -->
+- `Chart.yaml` mit korrekten Metadaten (apiVersion v2, name, description, version 0.1.0)
+- `values.yaml` mit allen konfigurierbaren Werten (image, resources, env, config.*)
+- `templates/_helpers.tpl` mit Standard-Helpers (name, fullname, chart, labels, selectorLabels, serviceAccountName)
+- `templates/deployment.yaml` — alle Hardcoded-Werte durch Values/Helpers ersetzt
+- `templates/configmap.yaml` — `config.yaml`-Inhalt dynamisch aus `values.config` via `toYaml`/`indent`
+- `templates/rbac.yaml` — ServiceAccount, ClusterRole, ClusterRoleBinding mit `{{- if .Values.rbac.create }}` Guards und dynamischem `.Release.Namespace`
+- `templates/NOTES.txt` — Release-Name, Namespace, kubectl-logs-Hinweis, LLM-Endpunkt-Override-Hinweis
+- `.helmignore` mit `*.md`, `.git/`
+- Kein Namespace-Hardcoding — immer `.Release.Namespace`
+- Alle Ressource-Namen ausschließlich über `k8s-agent.fullname`
 
 ## Done When
 
-<!-- Add done criteria here -->
+```bash
+helm lint helm/k8s-agent
+helm template k8s-agent helm/k8s-agent | kubectl apply --dry-run=client -f -
+```
+
+Beide Befehle laufen fehlerfrei durch.
 
 ## Notes
 
-<!-- Add notes here -->
+- Bestehende Manifeste unter `k8s/` als Referenz — 1:1 übertragen, dann parametrisieren
+- ConfigMap: kein manuelles Stringbuilding — `toYaml` + `indent` verwenden
+- `app.kubernetes.io/*` Labels auf allen Ressourcen; `helm.sh/chart` im labels-Helper einschließen
+- Ollama-Default: `http://ollama.default.svc.cluster.local:11434/v1`
 
 
 

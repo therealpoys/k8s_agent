@@ -1,0 +1,76 @@
+replicaCount: 1
+
+image:
+  repository: k8s-agent
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+rbac:
+  create: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  llmBaseUrl: "http://ollama.default.svc.cluster.local:11434/v1"
+  logLevel: INFO
+
+secret:
+  # create: true  → Helm rendert ein Secret aus apiKey (nur Dev/Test)
+  # create: false → kein Secret wird angelegt
+  create: false
+  # apiKey: ""    → wird als LLM_API_KEY env var injiziert (nur wenn create: true)
+  apiKey: ""
+  # existingSecret → Name eines manuell angelegten Secrets (Production)
+  # Alle Keys des Secrets werden als env vars gemountet.
+  existingSecret: ""
+
+config:
+  llm:
+    provider: ollama
+    model: qwen3:8b
+    timeout_seconds: 60
+  kubernetes:
+    namespaces:
+      - default
+    log_lines: 100
+  plugins:
+    core:
+      - pod_logs
+    optional:
+      trivy: false
+      falco: false
+      prometheus: false
+  outputs:
+    - console
+  loop_interval_seconds: 60
+  debug:
+    log_llm_io: false
+
+# -- Optional: Falco runtime security
+# Activate with: --set falco.enabled=true
+# Full values: https://github.com/falcosecurity/charts/tree/master/charts/falco
+falco:
+  enabled: false
+  driver:
+    kind: modern_ebpf
+
+# -- Optional: Trivy Operator vulnerability scanning
+# Activate with: --set trivy.enabled=true
+# Full values: https://github.com/aquasecurity/helm-charts/tree/main/charts/trivy-operator
+trivy:
+  enabled: false
+  trivy:
+    ignoreUnfixed: true

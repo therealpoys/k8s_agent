@@ -1,0 +1,10 @@
+K8s Agent deployed successfully!
+
+  Release:   {{ .Release.Name }}
+  Namespace: {{ .Release.Namespace }}
+
+Logs:
+  kubectl logs -l app.kubernetes.io/name={{ include "k8s-agent.name" . }} -n {{ .Release.Namespace }} -f
+
+To override the LLM endpoint:
+  helm upgrade {{ .Release.Name }} helm/k8s-agent --set env.llmBaseUrl=http://<your-ollama-host>:11434/v1
