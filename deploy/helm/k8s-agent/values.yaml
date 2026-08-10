@@ -43,6 +43,8 @@ agentConfig:
   outputs:
     - console
 
+  dedup_lookback_minutes: 15
+
 # Name eines bereits existierenden Secrets mit LLM API-Keys
 # Das Secret muss ANTHROPIC_API_KEY oder OPENAI_API_KEY enthalten
 existingSecret: k8s-agent-secrets

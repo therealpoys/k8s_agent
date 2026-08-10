@@ -11,6 +11,7 @@ def _finding(**kwargs) -> Finding:
         message="something went wrong",
         timestamp=datetime(2026, 1, 1, 12, 0, 0),
         raw=None,
+        fingerprint="pod/my-pod",
     )
     return Finding(**{**defaults, **kwargs})
 
@@ -37,6 +38,7 @@ class TestFinding:
         assert f.message == "something went wrong"
         assert f.timestamp == ts
         assert f.raw == {"key": "val"}
+        assert f.fingerprint == "pod/my-pod"
 
     def test_raw_can_be_none(self):
         f = _finding(raw=None)

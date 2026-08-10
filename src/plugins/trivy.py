@@ -95,6 +95,7 @@ class TrivyPlugin(BasePlugin):
             severity=severity,
             message=message,
             timestamp=datetime.now(timezone.utc),
+            fingerprint=f"{kind}/{resource_name}:{container}",
             raw={
                 "summary": summary,
                 "image": image,

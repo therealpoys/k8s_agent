@@ -76,6 +76,7 @@ class PrometheusPlugin(BasePlugin):
                     severity=severity,
                     message=f"{alertname}: {message}",
                     timestamp=timestamp,
+                    fingerprint=f"{alertname}:{resource}",
                     raw={
                         "alertname": alertname,
                         "labels": labels,

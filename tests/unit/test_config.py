@@ -35,6 +35,8 @@ YAML_WITH_PROMETHEUS_URL = MINIMAL_YAML.replace(
     "prometheus:\n  url: http://localhost:9090\n\nplugins:",
 )
 
+YAML_WITH_DEDUP_LOOKBACK = MINIMAL_YAML + "\ndedup_lookback_minutes: 30\n"
+
 
 def _load(yaml_content: str):
     """Import _load_config fresh with a tmp config.yaml."""
@@ -93,6 +95,14 @@ class TestLoadConfigHappyPath:
         yaml = MINIMAL_YAML.replace("    - default", "    - default\n    - kube-system")
         cfg = _call_load(tmp_path, yaml)
         assert cfg.namespaces == ["default", "kube-system"]
+
+    def test_dedup_lookback_minutes_default(self, tmp_path):
+        cfg = _call_load(tmp_path, MINIMAL_YAML)
+        assert cfg.dedup_lookback_minutes == 15
+
+    def test_dedup_lookback_minutes_explicit(self, tmp_path):
+        cfg = _call_load(tmp_path, YAML_WITH_DEDUP_LOOKBACK)
+        assert cfg.dedup_lookback_minutes == 30
 
 
 class TestLoadConfigErrors:

@@ -181,6 +181,14 @@ class TestAlertsToFindings:
 
         assert result[0].resource == "10.0.0.1:9100"
 
+    def test_fingerprint_is_alertname_and_resource(self):
+        plugin = PrometheusPlugin()
+        alerts = [_make_alert(alertname="PodCrashLooping", pod="my-pod")]
+
+        result = plugin._alerts_to_findings(alerts)
+
+        assert result[0].fingerprint == "PodCrashLooping:pod/my-pod"
+
     def test_finding_raw_contains_labels_and_annotations(self):
         plugin = PrometheusPlugin()
         alerts = [_make_alert(summary="something broke")]

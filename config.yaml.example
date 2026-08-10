@@ -23,3 +23,5 @@ plugins:
 
 outputs:
   - console
+
+dedup_lookback_minutes: 15  # Findings gelten nach N Minuten ohne erneutes Auftreten als "resolved" und alarmieren bei Wiederauftreten erneut

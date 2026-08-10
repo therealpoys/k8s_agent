@@ -138,6 +138,7 @@ class FalcoPlugin(BasePlugin):
                     severity=severity,
                     message=", ".join(parts),
                     timestamp=timestamp,
+                    fingerprint=rule,
                     raw={
                         "rule": rule,
                         "priority": event.get("priority"),

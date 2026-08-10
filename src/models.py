@@ -11,6 +11,7 @@ class Finding:
     message: str
     timestamp: datetime
     raw: dict | None
+    fingerprint: str
     recommendation: str | None = None
 
 

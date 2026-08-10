@@ -77,6 +77,7 @@ class K8sEventsPlugin(BasePlugin):
                     severity="HIGH",
                     message=f"{reason}: {event.message} ({count}x)",
                     timestamp=timestamp,
+                    fingerprint=f"{kind}:{name}:{reason}",
                     raw={
                         "kind": kind,
                         "name": name,

@@ -33,6 +33,8 @@ class Config:
 
     debug_log_llm_io: bool
 
+    dedup_lookback_minutes: int
+
 
 def _load_config() -> Config:
     if not _CONFIG_PATH.exists():
@@ -75,6 +77,7 @@ def _load_config() -> Config:
         optional_plugins=plugins.get("optional", {}),
         outputs=raw["outputs"],
         debug_log_llm_io=raw.get("debug", {}).get("log_llm_io", False),
+        dedup_lookback_minutes=raw.get("dedup_lookback_minutes", 15),
     )
 
 

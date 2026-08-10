@@ -3,6 +3,7 @@ from typing import TypedDict
 
 from langgraph.graph import StateGraph, START, END
 
+from src.dedup import Deduplicator
 from src.models import Finding, Alert
 from src.plugins.loader import load_plugins
 from src import analyzer
@@ -28,6 +29,17 @@ def _collect_findings(state: AgentState) -> dict:
     return {"findings": all_findings}
 
 
+def _dedup_findings(state: AgentState) -> dict:
+    try:
+        dedup = Deduplicator()
+        new_findings = dedup.filter_new(state["findings"])
+        dedup.cleanup_resolved()
+    except Exception as exc:
+        logger.error("Dedup fehlgeschlagen (%s) — Findings ungefiltert weitergereicht", exc)
+        return {"findings": state["findings"]}
+    return {"findings": new_findings}
+
+
 def _analyze_findings(state: AgentState) -> dict:
     alert = analyzer.analyze(state["findings"])
     return {"alert": alert}
@@ -42,11 +54,13 @@ def build_graph():
     graph = StateGraph(AgentState)
 
     graph.add_node("collect_findings", _collect_findings)
+    graph.add_node("dedup_findings", _dedup_findings)
     graph.add_node("analyze_findings", _analyze_findings)
     graph.add_node("send_output", _send_output)
 
     graph.add_edge(START, "collect_findings")
-    graph.add_edge("collect_findings", "analyze_findings")
+    graph.add_edge("collect_findings", "dedup_findings")
+    graph.add_edge("dedup_findings", "analyze_findings")
     graph.add_edge("analyze_findings", "send_output")
     graph.add_edge("send_output", END)
 

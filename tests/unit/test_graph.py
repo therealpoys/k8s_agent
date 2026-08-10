@@ -4,7 +4,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.models import Alert, Finding
-from src.graph import _collect_findings, _analyze_findings, _send_output, build_graph
+from src.graph import (
+    _collect_findings,
+    _dedup_findings,
+    _analyze_findings,
+    _send_output,
+    build_graph,
+)
 
 
 def _make_finding() -> Finding:
@@ -16,6 +22,7 @@ def _make_finding() -> Finding:
         message="Something went wrong",
         timestamp=datetime(2026, 1, 1),
         raw=None,
+        fingerprint="my-pod",
     )
 
 
@@ -90,6 +97,46 @@ class TestCollectFindings:
 
 
 # ---------------------------------------------------------------------------
+# _dedup_findings
+# ---------------------------------------------------------------------------
+
+class TestDedupFindings:
+    def test_delegates_to_deduplicator(self):
+        finding = _make_finding()
+        state = {"findings": [finding], "alert": None}
+
+        mock_dedup = MagicMock()
+        mock_dedup.filter_new.return_value = []
+        with patch("src.graph.Deduplicator", return_value=mock_dedup):
+            result = _dedup_findings(state)
+
+        mock_dedup.filter_new.assert_called_once_with([finding])
+        mock_dedup.cleanup_resolved.assert_called_once()
+        assert result == {"findings": []}
+
+    def test_dedup_failure_does_not_block_pipeline(self):
+        finding = _make_finding()
+        state = {"findings": [finding], "alert": None}
+
+        with patch("src.graph.Deduplicator", side_effect=RuntimeError("CRD missing")):
+            result = _dedup_findings(state)
+
+        assert result == {"findings": [finding]}
+
+    def test_cleanup_failure_still_fails_open(self):
+        finding = _make_finding()
+        state = {"findings": [finding], "alert": None}
+
+        mock_dedup = MagicMock()
+        mock_dedup.filter_new.return_value = [finding]
+        mock_dedup.cleanup_resolved.side_effect = RuntimeError("boom")
+        with patch("src.graph.Deduplicator", return_value=mock_dedup):
+            result = _dedup_findings(state)
+
+        assert result == {"findings": [finding]}
+
+
+# ---------------------------------------------------------------------------
 # _analyze_findings
 # ---------------------------------------------------------------------------
 
@@ -150,13 +197,21 @@ class TestBuildGraph:
         graph = build_graph()
         assert graph is not None
 
+    def test_dedup_node_wired_between_collect_and_analyze(self):
+        graph = build_graph()
+        node_names = set(graph.get_graph().nodes.keys())
+        assert "dedup_findings" in node_names
+
     def test_graph_is_invocable(self):
         finding = _make_finding()
         alert = _make_alert([finding])
         plugin = _mock_plugin([finding])
+        mock_dedup = MagicMock()
+        mock_dedup.filter_new.return_value = [finding]
 
         with (
             patch("src.graph.load_plugins", return_value=[plugin]),
+            patch("src.graph.Deduplicator", return_value=mock_dedup),
             patch("src.graph.analyzer.analyze", return_value=alert),
             patch("src.graph.console.send"),
         ):

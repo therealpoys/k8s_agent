@@ -176,6 +176,15 @@ class TestEventsToFindings:
         assert result[0].raw["output_fields"]["proc.name"] == "cat"
         assert result[0].raw["output_fields"]["fd.name"] == "/etc/passwd"
 
+    def test_fingerprint_is_rule_name(self):
+        plugin = _make_plugin()
+        events = [_make_event(rule="Read sensitive file", priority="Warning")]
+
+        with patch("src.plugins.falco.config", _mock_config()):
+            result = plugin._events_to_findings(events, "falco")
+
+        assert result[0].fingerprint == "Read sensitive file"
+
     def test_finding_message_includes_process_and_file(self):
         plugin = _make_plugin()
         events = [_make_event(rule="Shadow read", priority="Critical", **{"proc.name": "cat", "fd.name": "/etc/shadow"})]

@@ -20,6 +20,7 @@ def _make_finding(severity: str) -> Finding:
         message="test message",
         timestamp=datetime(2026, 1, 1),
         raw=None,
+        fingerprint="my-pod",
     )
 
 
@@ -74,6 +75,7 @@ class TestFormatK8sEventsFinding:
             message="FailedMount: unable to mount volume (3x)",
             timestamp=datetime(2026, 1, 1),
             raw={"reason": "FailedMount", "count": 3},
+            fingerprint="Pod:my-pod:FailedMount",
         )
 
         result = _format_k8s_events_finding(1, finding)

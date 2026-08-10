@@ -21,3 +21,6 @@ rules:
     resources: ["vulnerabilityreports", "configauditreports", "exposedsecretreports"]
     verbs: ["list", "get"]
   {{- end }}
+  - apiGroups: ["k8s-agent.dev"]
+    resources: ["seenfindings"]
+    verbs: ["get", "list", "create", "patch", "delete"]

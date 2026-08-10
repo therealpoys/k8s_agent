@@ -172,6 +172,7 @@ class PodLogsPlugin(BasePlugin):
                             severity="info",
                             message=logs,
                             timestamp=datetime.utcnow(),
+                            fingerprint=f"{pod_name}/{container}",
                             raw={
                                 "pod_name": pod_name,
                                 "container": container,
