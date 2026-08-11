@@ -6,6 +6,7 @@ import requests
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
+from src.plugins.identity import stable_name
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class PrometheusPlugin(BasePlugin):
             pod = labels.get("pod", "")
 
             resource = f"pod/{pod}" if pod else labels.get("instance", "unknown")
+            fingerprint_resource = f"pod/{stable_name(pod)}" if pod else labels.get("instance", "unknown")
             message = annotations.get("summary") or annotations.get("description") or alertname
 
             try:
@@ -76,7 +78,7 @@ class PrometheusPlugin(BasePlugin):
                     severity=severity,
                     message=f"{alertname}: {message}",
                     timestamp=timestamp,
-                    fingerprint=f"{alertname}:{resource}",
+                    fingerprint=f"{alertname}:{fingerprint_resource}",
                     raw={
                         "alertname": alertname,
                         "labels": labels,

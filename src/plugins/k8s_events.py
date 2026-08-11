@@ -7,6 +7,7 @@ from kubernetes.client.exceptions import ApiException
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
+from src.plugins.identity import stable_name
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ class K8sEventsPlugin(BasePlugin):
                     severity="HIGH",
                     message=f"{reason}: {event.message} ({count}x)",
                     timestamp=timestamp,
-                    fingerprint=f"{kind}:{name}:{reason}",
+                    fingerprint=f"{kind}:{stable_name(name)}:{reason}",
                     raw={
                         "kind": kind,
                         "name": name,

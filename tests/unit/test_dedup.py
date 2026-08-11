@@ -22,16 +22,19 @@ def _make_finding(
     resource: str = "pod/my-pod",
     fingerprint: str = "Pod:my-pod:BackOff",
     severity: str = "HIGH",
+    message: str = "test message",
+    recommendation: str | None = None,
 ) -> Finding:
     return Finding(
         source=source,
         namespace=namespace,
         resource=resource,
         severity=severity,
-        message="test message",
+        message=message,
         timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc),
         raw=None,
         fingerprint=fingerprint,
+        recommendation=recommendation,
     )
 
 
@@ -52,6 +55,18 @@ class TestFilterNew:
 
         assert result == [finding]
         dedup._api.create_namespaced_custom_object.assert_called_once()
+
+    def test_filter_new_stores_message_on_created_cr(self):
+        dedup = _make_dedup()
+        finding = _make_finding(message="pod crashed with OOMKilled")
+        dedup._api.get_namespaced_custom_object.side_effect = ApiException(status=404)
+
+        dedup.filter_new([finding])
+
+        args = dedup._api.create_namespaced_custom_object.call_args.args
+        body = args[-1]
+        assert body["spec"]["message"] == "pod crashed with OOMKilled"
+        assert body["spec"]["recommendation"] == ""
 
     def test_filter_new_drops_finding_with_existing_fresh_cr(self):
         dedup = _make_dedup()
@@ -78,6 +93,7 @@ class TestFilterNew:
         patch_body = args[-1]
         assert patch_body["spec"]["count"] == 4
         assert "lastSeen" in patch_body["spec"]
+        assert patch_body["spec"]["message"] == "test message"
 
     def test_filter_new_fails_open_on_non_404_api_error(self):
         dedup = _make_dedup()
@@ -110,6 +126,34 @@ class TestFilterNew:
         result = dedup.filter_new([finding])
 
         assert result == []
+
+
+class TestUpdateRecommendations:
+    def test_patches_cr_with_recommendation(self):
+        dedup = _make_dedup()
+        finding = _make_finding(recommendation="Increase memory limit")
+
+        dedup.update_recommendations([finding])
+
+        dedup._api.patch_namespaced_custom_object.assert_called_once()
+        args = dedup._api.patch_namespaced_custom_object.call_args.args
+        patch_body = args[-1]
+        assert patch_body["spec"]["recommendation"] == "Increase memory limit"
+
+    def test_skips_finding_without_recommendation(self):
+        dedup = _make_dedup()
+        finding = _make_finding(recommendation=None)
+
+        dedup.update_recommendations([finding])
+
+        dedup._api.patch_namespaced_custom_object.assert_not_called()
+
+    def test_does_not_raise_when_patch_fails(self):
+        dedup = _make_dedup()
+        finding = _make_finding(recommendation="Increase memory limit")
+        dedup._api.patch_namespaced_custom_object.side_effect = ApiException(status=500)
+
+        dedup.update_recommendations([finding])  # must not raise
 
 
 class TestCleanupResolved:

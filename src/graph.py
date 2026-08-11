@@ -45,6 +45,17 @@ def _analyze_findings(state: AgentState) -> dict:
     return {"alert": alert}
 
 
+def _persist_recommendations(state: AgentState) -> dict:
+    alert = state.get("alert")
+    if not alert:
+        return {}
+    try:
+        Deduplicator().update_recommendations(alert.findings)
+    except Exception as exc:
+        logger.warning("Recommendations konnten nicht in SeenFindings gespeichert werden: %s", exc)
+    return {}
+
+
 def _send_output(state: AgentState) -> dict:
     console.send(state["alert"])
     return {}
@@ -56,12 +67,14 @@ def build_graph():
     graph.add_node("collect_findings", _collect_findings)
     graph.add_node("dedup_findings", _dedup_findings)
     graph.add_node("analyze_findings", _analyze_findings)
+    graph.add_node("persist_recommendations", _persist_recommendations)
     graph.add_node("send_output", _send_output)
 
     graph.add_edge(START, "collect_findings")
     graph.add_edge("collect_findings", "dedup_findings")
     graph.add_edge("dedup_findings", "analyze_findings")
-    graph.add_edge("analyze_findings", "send_output")
+    graph.add_edge("analyze_findings", "persist_recommendations")
+    graph.add_edge("persist_recommendations", "send_output")
     graph.add_edge("send_output", END)
 
     return graph.compile()

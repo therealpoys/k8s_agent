@@ -128,6 +128,41 @@ class TestAnalyzeHappyPath:
 
 
 # ---------------------------------------------------------------------------
+# analyze — per-finding enrichment (severity + recommendation)
+# ---------------------------------------------------------------------------
+
+class TestAnalyzePerFindingEnrichment:
+    @patch("src.analyzer._build_llm")
+    def test_applies_per_finding_severity_and_recommendation(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "r", '
+            '"findings": [{"index": 1, "severity": "critical", "recommendation": "Bump memory limit."}]}'
+        )
+        original = _make_finding("info")
+
+        result = analyze([original])
+
+        assert result.summary == "s"
+        enriched = result.findings[0]
+        assert enriched.severity == "critical"
+        assert enriched.recommendation == "Bump memory limit."
+        assert enriched.fingerprint == original.fingerprint
+
+    @patch("src.analyzer._build_llm")
+    def test_out_of_range_index_is_ignored(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "r", '
+            '"findings": [{"index": 99, "severity": "critical", "recommendation": "n/a"}]}'
+        )
+        original = _make_finding("info")
+
+        result = analyze([original])
+
+        assert result.summary == "s"
+        assert result.findings[0] == original
+
+
+# ---------------------------------------------------------------------------
 # analyze — invalid severity fallback
 # ---------------------------------------------------------------------------
 

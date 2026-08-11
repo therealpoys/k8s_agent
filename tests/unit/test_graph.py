@@ -8,6 +8,7 @@ from src.graph import (
     _collect_findings,
     _dedup_findings,
     _analyze_findings,
+    _persist_recommendations,
     _send_output,
     build_graph,
 )
@@ -160,6 +161,43 @@ class TestAnalyzeFindings:
             result = _analyze_findings(state)
 
         assert result["alert"] is alert
+
+
+# ---------------------------------------------------------------------------
+# _persist_recommendations
+# ---------------------------------------------------------------------------
+
+class TestPersistRecommendations:
+    def test_delegates_to_deduplicator(self):
+        finding = _make_finding()
+        alert = _make_alert([finding])
+        state = {"findings": [finding], "alert": alert}
+
+        mock_dedup = MagicMock()
+        with patch("src.graph.Deduplicator", return_value=mock_dedup):
+            result = _persist_recommendations(state)
+
+        mock_dedup.update_recommendations.assert_called_once_with([finding])
+        assert result == {}
+
+    def test_no_alert_returns_empty_dict_without_touching_dedup(self):
+        state = {"findings": [], "alert": None}
+
+        with patch("src.graph.Deduplicator") as mock_dedup_cls:
+            result = _persist_recommendations(state)
+
+        mock_dedup_cls.assert_not_called()
+        assert result == {}
+
+    def test_failure_does_not_block_pipeline(self):
+        finding = _make_finding()
+        alert = _make_alert([finding])
+        state = {"findings": [finding], "alert": alert}
+
+        with patch("src.graph.Deduplicator", side_effect=RuntimeError("CRD missing")):
+            result = _persist_recommendations(state)  # must not raise
+
+        assert result == {}
 
 
 # ---------------------------------------------------------------------------

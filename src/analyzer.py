@@ -279,6 +279,7 @@ def analyze(findings: list[Finding]) -> Alert:
                 message=f.message,
                 timestamp=f.timestamp,
                 raw=f.raw,
+                fingerprint=f.fingerprint,
                 recommendation=finding_data.get("recommendation"),
             )
 

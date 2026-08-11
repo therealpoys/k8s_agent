@@ -8,6 +8,7 @@ from kubernetes.client.exceptions import ApiException
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
+from src.plugins.identity import stable_name
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ class PodLogsPlugin(BasePlugin):
                             severity="info",
                             message=logs,
                             timestamp=datetime.utcnow(),
-                            fingerprint=f"{pod_name}/{container}",
+                            fingerprint=f"{stable_name(pod_name)}/{container}",
                             raw={
                                 "pod_name": pod_name,
                                 "container": container,

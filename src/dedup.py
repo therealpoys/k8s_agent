@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 _GROUP = "k8s-agent.dev"
 _VERSION = "v1alpha1"
 _PLURAL = "seenfindings"
+_MESSAGE_MAX_CHARS = 1000
+
+
+def _truncate(text: str | None, limit: int = _MESSAGE_MAX_CHARS) -> str:
+    if not text:
+        return ""
+    return text[:limit]
 
 
 class Deduplicator:
@@ -45,6 +52,22 @@ class Deduplicator:
             self._touch(finding, name, existing)
         return new
 
+    def update_recommendations(self, findings: list[Finding]) -> None:
+        for finding in findings:
+            if not finding.recommendation:
+                continue
+            name = _cr_name(finding)
+            patch = {"spec": {"recommendation": finding.recommendation}}
+            try:
+                self._api.patch_namespaced_custom_object(
+                    _GROUP, _VERSION, finding.namespace, _PLURAL, name, patch
+                )
+            except ApiException as exc:
+                logger.warning(
+                    "SeenFinding-CR %s konnte nicht mit Recommendation aktualisiert werden: %s",
+                    name, exc,
+                )
+
     def cleanup_resolved(self) -> None:
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=config.dedup_lookback_minutes)
         for namespace in config.namespaces:
@@ -71,6 +94,8 @@ class Deduplicator:
                 "resource": finding.resource,
                 "fingerprint": finding.fingerprint,
                 "severity": finding.severity,
+                "message": _truncate(finding.message),
+                "recommendation": finding.recommendation or "",
                 "firstSeen": now,
                 "lastSeen": now,
                 "count": 1,
@@ -89,6 +114,7 @@ class Deduplicator:
             "spec": {
                 "lastSeen": datetime.now(timezone.utc).isoformat(),
                 "count": spec.get("count", 0) + 1,
+                "message": _truncate(finding.message),
             }
         }
         try:
