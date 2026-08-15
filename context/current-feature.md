@@ -1,50 +1,16 @@
-# Current Feature: Schritt 19 — Fallback-Recommendation bei unvollständiger LLM-Antwort
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- In `src/analyzer.py::analyze()` nach dem bestehenden Enrichment-Loop (der `per_finding`-Einträge auf `enriched` anwendet) einen zweiten Pass ergänzen
-- Jedes Finding in `enriched`, dessen `recommendation` nach dem ersten Pass weiterhin falsy ist (fehlender Index im LLM-`findings[]`-Array ODER leerer String), bekommt eine Fallback-Recommendation
-- Fallback-Text: `_FALLBACK_PREFIX + overall_recommendation` (Alert-weite `data["recommendation"]"`), mit `_FALLBACK_PREFIX = "No specific guidance from the LLM for this finding — see overall recommendation: "`
-- Zweiter Pass läuft **nur im Happy Path** (innerhalb des bestehenden `try`-Blocks nach erfolgreichem `json.loads`) — **nicht** in `_degraded_alert()`
-- Neue Tests in `tests/unit/test_analyzer.py`:
-  - `test_finding_without_llm_entry_gets_fallback_recommendation`
-  - `test_finding_with_empty_recommendation_string_gets_fallback`
-  - `test_finding_with_explicit_recommendation_keeps_it` (Regression)
-  - `test_degraded_mode_does_not_apply_fallback_text`
-- Bestehende Tests bleiben grün
+<!-- Populated by /feature load -->
 
 ## Notes
 
-Vollständiger Spec-Text: `context/prompts/step19_recommendation_fallback.md`.
-
-**Root Cause:** Bei großen LLM-Batches (z.B. 52 Findings in einem Call, verursacht durch den
-Schritt-17-Full-Context-Resend) hält das lokale Ollama-Modell (`qwen3.6:35b-a3b-q4_K_M`) die
-Prompt-Regel "ein Recommendation-Eintrag pro Finding" nicht zuverlässig ein. Fehlt ein Index im
-`findings[]`-Array der LLM-Antwort (oder taucht dort ohne/mit leerem `recommendation` auf), bleibt
-`Finding.recommendation` dauerhaft leer, da `Deduplicator.update_recommendations()` nur Findings
-mit truthy `recommendation` patcht (`if f.recommendation:`).
-
-**Designentscheidungen:**
-- Fallback = Alert-weite Recommendation statt generischem Static-String — informativer, kein
-  zweiter Text zu pflegen
-- Kennzeichnungs-Präfix statt stillem Reuse — macht in `kubectl get sf -o yaml` und Konsolen-
-  Ausgabe sofort erkennbar, dass keine finding-spezifische LLM-Analyse stattfand
-- Nur Happy Path, nicht Degraded Mode — Degraded Mode kommuniziert den kompletten LLM-Ausfall
-  bereits klar auf Alert-Ebene (`summary="LLM analysis unavailable"`); derselbe Fallback-Text in
-  jedem Finding würde die Unterscheidung "LLM teilweise geantwortet" vs. "LLM komplett ausgefallen"
-  verwischen
-- Fix in `analyzer.py`, nicht in `dedup.py` — hält die Garantie "ein Finding, das den Analyzer
-  erfolgreich durchlaufen hat, hat immer eine `recommendation`" an einer Stelle; `dedup.py` und
-  `console.py` brauchen keine Sonderbehandlung für leere Recommendations
-
-**Keine Änderung nötig** an `src/dedup.py` oder `src/graph.py`.
-
-**Done when:** Kein Finding, dessen Run erfolgreich (Happy Path) durch den Analyzer lief, landet
-mit leerer `recommendation` in einem `SeenFinding`-CR oder in der Konsolen-Ausgabe.
+<!-- Populated by /feature load -->
 
 ## History
 
@@ -71,3 +37,4 @@ mit leerer `recommendation` in einem `SeenFinding`-CR oder in der Konsolen-Ausga
 - **Bugfixes — stabile Fingerprints & Reason/Recommendation in SeenFindings**: Root Cause für weiterhin auftretende doppelte Findings gefunden: Fingerprints enthielten rohe K8s-generierte Namen (Pod-Hash-Suffixe, ReplicaSet-Template-Hashes, Job-Timestamp-Suffixe), wodurch dasselbe logische Problem bei jeder Pod-Neuerstellung einen neuen Fingerprint bekam und die SeenFinding-Dedup nie griff; neues `src/plugins/identity.py` mit `stable_name()` (strippt diese volatilen Suffixe per Regex) in `k8s_events`/`pod_logs`/`prometheus`/`trivy` vor dem Fingerprinting eingesetzt. Zweiter Bug in `analyzer.py`: beim Anreichern der Findings mit LLM-Recommendations wurde `Finding` ohne `fingerprint` rekonstruiert → warf bei jedem Lauf eine Exception, die still auf Degraded Mode zurückfiel (keine Per-Finding-Empfehlungen) — Fix: `fingerprint=f.fingerprint` ergänzt. Feature-Ergänzung: `SeenFinding`-CRD-Schema um `message`/`recommendation` erweitert (`crd.yaml` + `helm upgrade`), `Deduplicator._create`/`_touch` speichern jetzt die Finding-Message, neue `Deduplicator.update_recommendations()` + Graph-Node `_persist_recommendations` (zwischen `analyze` und `send_output`) patchen die LLM-Empfehlung nach der Analyse in die CR — `kubectl get sf -o yaml` zeigt jetzt Grund und Handlungsempfehlung statt nur Source/Count; 167 Tests grün. Alle 92 stale SeenFinding-CRs im Cluster gelöscht, Image neu gebaut (`docker build`, SSL-Fehler durch VPN/Proxy-TLS-Interception war transient), CRD-Schema per `helm upgrade` aktualisiert
 - **Schritt 17 — SeenFinding-Aggregation pro Resource**: Neues Pflichtfeld `Finding.identity` (eine Ebene gröber als `fingerprint`, stabil via `stable_name()`) als Gruppierungs-Schlüssel in allen 5 Plugins gesetzt; `SeenFinding`-CRD-Schema von Flach- auf Listen-Struktur umgestellt (`spec.findings[]` statt `source`/`fingerprint`/`count` direkt am `spec`, Breaking Change — `kubectl delete sf --all -A` vor `helm upgrade` nötig); `src/dedup.py` komplett umgebaut auf Gruppierung nach `(namespace, identity)`, `_merge()` für Listen-Einträge, Full-Context-Resend (alt+neu) an den Analyzer sobald sich in einer Gruppe etwas ändert, Cleanup jetzt pro Listen-Eintrag statt pro CR; `analyzer.py` um `identity=f.identity` beim Finding-Rekonstruieren ergänzt (gleicher Bugtyp wie zuvor bei `fingerprint`); 175 Tests grün. Live im Cluster verifiziert und dabei einen zweiten, von Schritt 17 unabhängigen Bug gefunden: `PrometheusPlugin` liefert für cluster-weite Alerts (z.B. Watchdog) einen leeren `namespace`, wodurch `dedup.py`s K8s-API-Call mit einem leeren `{namespace}`-Pfadsegment eine irreführende 403-Fehlermeldung auslöste (K8s interpretiert die leere Segment-Kombination als LIST-Request auf `namespace=seenfindings`) — Fix: Findings ohne Namespace überspringen den SeenFinding-Dedup fail-open, ganz ohne API-Call. Root Cause per Live-Debug-Pod mit echtem ServiceAccount im Cluster verifiziert (Reproduktion über Monkeypatch von `call_api`, dann End-to-End über echte Plugin-Findings). Zusätzlich beobachtet (nicht in diesem Feature behoben, sondern als `context/prompts/step19_recommendation_fallback.md` für den nächsten Schritt spezifiziert): bei größeren LLM-Batches (52 Findings in einem Call) hält das lokale Ollama-Modell die Prompt-Regel "ein Recommendation-Eintrag pro Finding" nicht zuverlässig ein, wodurch manche `SeenFinding`-Einträge dauerhaft mit leerer `recommendation` stehen bleiben
 - **Schritt 18 — Pagination für K8sEventsPlugin**: `_namespace_findings` (`src/plugins/k8s_events.py`) von einem unpaginierten `list_namespaced_event`-Aufruf auf seitenweises Sammeln über `limit=_PAGE_SIZE`(200)/`_continue`-Token umgestellt, um bei Namespaces mit sehr vielen Warning-Events (hohe Pod-Churn, verrauschte Events über Zeit) große Einzel-Responses und Timeout-/Speicher-Risiko zu vermeiden; scheitert eine spätere Seite (z.B. transientes 403 nach erfolgreicher erster Seite), werden bereits gesammelte Events trotzdem zu Findings verarbeitet statt verworfen — scheitert bereits die erste Seite, bleibt das Fehlerverhalten (401/403/404/generisch → `[]`) identisch zu vorher. Scope bewusst auf `k8s_events.py` beschränkt (`pod_logs.py`/`list_namespaced_pod` bleibt außen vor, Pod-Anzahl pro Namespace typischerweise viel kleiner als Event-Anzahl). 4 neue Pagination-Tests; dabei drei bestehende Tests gefixt, die mit rohem `MagicMock(items=...)` als Response arbeiteten — `metadata._continue` wäre sonst ein truthy Mock-Attribut gewesen und hätte die Pagination-Schleife endlos laufen lassen; neuer `_make_response()`-Test-Helper setzt `_continue` jetzt explizit; 179 Tests grün
+- **Schritt 19 — Fallback-Recommendation bei unvollständiger LLM-Antwort**: `src/analyzer.py::analyze()` bekommt nach dem bestehenden Per-Finding-Enrichment-Loop einen zweiten Pass — jedes Finding, dessen `recommendation` weiterhin falsy ist (fehlender Index im LLM-`findings[]`-Array oder leerer String, was bei großen Batches wie dem Schritt-17-Full-Context-Resend beim lokalen Ollama-Modell regelmäßig vorkommt), bekommt `_FALLBACK_PREFIX + overall_recommendation` als Recommendation, damit `SeenFinding`-CRs nicht dauerhaft mit leerer Recommendation stehen bleiben; Präfix kennzeichnet den Unterschied zu einer finding-spezifischen LLM-Aussage; Pass läuft ausschließlich im Happy Path, nicht in `_degraded_alert()`. Zwei bestehende Tests (`test_returns_alert_with_llm_values`, `test_out_of_range_index_is_ignored`) mussten von Volltreffer-Objektgleichheit auf Feld-Assertions umgestellt werden, da Findings ohne LLM-Recommendation jetzt korrekterweise die Fallback-Recommendation tragen statt unverändert zu bleiben; 4 neue Fallback-Tests; keine Änderung an `dedup.py`/`graph.py` nötig; 183 Tests grün
