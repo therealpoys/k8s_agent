@@ -7,7 +7,8 @@ from kubernetes.client.exceptions import ApiException
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
-from src.plugins.identity import stable_name
+from src.plugins.identity import resource_identity, stable_name
+from src.severity import CRITICAL, WARNING
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class TrivyPlugin(BasePlugin):
         artifact = report.get("report", {}).get("artifact", {})
         image = f"{artifact.get('repository', '')}:{artifact.get('tag', 'unknown')}"
 
-        severity = "CRITICAL" if critical > 0 else "HIGH"
+        severity = CRITICAL if critical > 0 else WARNING
         message = (
             f"{critical} kritische, {high} hohe CVEs in {image} "
             f"({kind}/{resource_name}, Container: {container})"
@@ -97,7 +98,7 @@ class TrivyPlugin(BasePlugin):
             message=message,
             timestamp=datetime.now(timezone.utc),
             fingerprint=f"{kind}/{stable_name(resource_name)}:{container}",
-            identity=f"{kind}/{stable_name(resource_name)}",
+            identity=resource_identity(kind, resource_name),
             raw={
                 "summary": summary,
                 "image": image,

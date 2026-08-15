@@ -16,3 +16,7 @@ def stable_name(name: str) -> str:
     ):
         parts.pop()
     return "-".join(parts)
+
+
+def resource_identity(kind: str, name: str) -> str:
+    return f"{kind.lower()}/{stable_name(name)}"

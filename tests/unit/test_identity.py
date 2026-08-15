@@ -1,4 +1,4 @@
-from src.plugins.identity import stable_name
+from src.plugins.identity import resource_identity, stable_name
 
 
 class TestStableName:
@@ -22,3 +22,14 @@ class TestStableName:
 
     def test_does_not_strip_a_real_word_that_looks_short(self):
         assert stable_name("my-service-mysql") == "my-service-mysql"
+
+
+class TestResourceIdentity:
+    def test_resource_identity_lowercases_kind(self):
+        assert resource_identity("Pod", "myapp-7d9f8c6b5-xk2pl") == resource_identity(
+            "pod", "myapp-7d9f8c6b5-xk2pl"
+        )
+        assert resource_identity("Pod", "myapp-7d9f8c6b5-xk2pl") == "pod/myapp"
+
+    def test_resource_identity_applies_stable_name(self):
+        assert resource_identity("pod", "myapp-7d9f8c6b5-xk2pl") == "pod/myapp"

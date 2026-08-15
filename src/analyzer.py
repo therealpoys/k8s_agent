@@ -4,11 +4,9 @@ from datetime import datetime
 
 from src.config import config
 from src.models import Alert, Finding
+from src.severity import SEVERITY_ORDER, VALID_SEVERITIES
 
 logger = logging.getLogger(__name__)
-
-_VALID_SEVERITIES = {"info", "warning", "critical"}
-_SEVERITY_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
 _FALLBACK_PREFIX = "No specific guidance from the LLM for this finding — see overall recommendation: "
 
@@ -52,8 +50,8 @@ def _highest_severity(findings: list[Finding]) -> str:
     if not findings:
         return "info"
     return max(
-        (f.severity for f in findings if f.severity in _SEVERITY_ORDER),
-        key=lambda s: _SEVERITY_ORDER.get(s, 0),
+        (f.severity for f in findings if f.severity in SEVERITY_ORDER),
+        key=lambda s: SEVERITY_ORDER.get(s, 0),
         default="info",
     )
 
@@ -261,7 +259,7 @@ def analyze(findings: list[Finding]) -> Alert:
         data = json.loads(raw_content)
 
         severity = data.get("severity", "warning")
-        if severity not in _VALID_SEVERITIES:
+        if severity not in VALID_SEVERITIES:
             logger.warning("LLM returned invalid severity %r, defaulting to 'warning'", severity)
             severity = "warning"
 
@@ -277,7 +275,7 @@ def analyze(findings: list[Finding]) -> Alert:
                 source=f.source,
                 namespace=f.namespace,
                 resource=f.resource,
-                severity=f_severity if f_severity in _VALID_SEVERITIES else f.severity,
+                severity=f_severity if f_severity in VALID_SEVERITIES else f.severity,
                 message=f.message,
                 timestamp=f.timestamp,
                 raw=f.raw,

@@ -8,16 +8,17 @@ from kubernetes.client.exceptions import ApiException
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
-from src.plugins.identity import stable_name
+from src.plugins.identity import resource_identity
+from src.severity import CRITICAL, WARNING
 
 logger = logging.getLogger(__name__)
 
 _SEVERITY_MAP: dict[str, str] = {
-    "Emergency": "CRITICAL",
-    "Alert": "CRITICAL",
-    "Critical": "CRITICAL",
-    "Error": "HIGH",
-    "Warning": "HIGH",
+    "Emergency": CRITICAL,
+    "Alert": CRITICAL,
+    "Critical": CRITICAL,
+    "Error": WARNING,
+    "Warning": WARNING,
 }
 
 _FALCO_LABEL_SELECTOR = "app.kubernetes.io/name=falco"
@@ -140,7 +141,7 @@ class FalcoPlugin(BasePlugin):
                     message=", ".join(parts),
                     timestamp=timestamp,
                     fingerprint=rule,
-                    identity=f"pod/{stable_name(affected_pod)}" if affected_pod else "node/unknown",
+                    identity=resource_identity("pod", affected_pod) if affected_pod else "node/unknown",
                     raw={
                         "rule": rule,
                         "priority": event.get("priority"),

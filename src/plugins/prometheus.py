@@ -6,15 +6,16 @@ import requests
 from src.config import config
 from src.models import Finding
 from src.plugins.base import BasePlugin
-from src.plugins.identity import stable_name
+from src.plugins.identity import resource_identity
+from src.severity import CRITICAL, INFO, WARNING
 
 logger = logging.getLogger(__name__)
 
 # Prometheus-Alert-Severity-Label-Konvention (kube-prometheus-stack Default-Regeln)
 _SEVERITY_MAP: dict[str, str] = {
-    "critical": "CRITICAL",
-    "warning": "HIGH",
-    "info": "info",
+    "critical": CRITICAL,
+    "warning": WARNING,
+    "info": INFO,
 }
 
 _REQUEST_TIMEOUT_SECONDS = 10
@@ -55,14 +56,14 @@ class PrometheusPlugin(BasePlugin):
             annotations = alert.get("annotations", {})
 
             severity_label = labels.get("severity", "").lower()
-            severity = _SEVERITY_MAP.get(severity_label, "HIGH")
+            severity = _SEVERITY_MAP.get(severity_label, WARNING)
 
             alertname = labels.get("alertname", "unknown")
             namespace = labels.get("namespace", "")
             pod = labels.get("pod", "")
 
             resource = f"pod/{pod}" if pod else labels.get("instance", "unknown")
-            fingerprint_resource = f"pod/{stable_name(pod)}" if pod else labels.get("instance", "unknown")
+            fingerprint_resource = resource_identity("pod", pod) if pod else labels.get("instance", "unknown")
             message = annotations.get("summary") or annotations.get("description") or alertname
 
             try:

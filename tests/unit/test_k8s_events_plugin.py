@@ -189,13 +189,13 @@ class TestEventsToFindings:
 
         assert len(result) == 2
 
-    def test_finding_severity_always_high(self):
+    def test_finding_severity_always_warning(self):
         plugin = _make_plugin()
         events = [_make_event(reason="FailedScheduling")]
 
         result = plugin._events_to_findings(events, "default")
 
-        assert result[0].severity == "HIGH"
+        assert result[0].severity == "warning"
 
     def test_finding_message_includes_reason_and_message(self):
         plugin = _make_plugin()

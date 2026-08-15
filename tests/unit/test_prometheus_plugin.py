@@ -125,7 +125,7 @@ class TestAlertsToFindings:
         result = plugin._alerts_to_findings(alerts)
 
         assert len(result) == 1
-        assert result[0].severity == "CRITICAL"
+        assert result[0].severity == "critical"
 
     def test_alerts_to_findings_maps_warning(self):
         plugin = PrometheusPlugin()
@@ -134,16 +134,16 @@ class TestAlertsToFindings:
         result = plugin._alerts_to_findings(alerts)
 
         assert len(result) == 1
-        assert result[0].severity == "HIGH"
+        assert result[0].severity == "warning"
 
-    def test_alerts_to_findings_unknown_severity_defaults_high(self):
+    def test_alerts_to_findings_unknown_severity_defaults_warning(self):
         plugin = PrometheusPlugin()
         alerts = [_make_alert(severity="")]
 
         result = plugin._alerts_to_findings(alerts)
 
         assert len(result) == 1
-        assert result[0].severity == "HIGH"
+        assert result[0].severity == "warning"
 
     def test_alerts_to_findings_multiple_firing(self):
         plugin = PrometheusPlugin()

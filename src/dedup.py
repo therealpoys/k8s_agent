@@ -8,6 +8,7 @@ from kubernetes.client.exceptions import ApiException
 
 from src.config import config
 from src.models import Finding
+from src.severity import SEVERITY_ORDER
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,6 @@ _GROUP = "k8s-agent.dev"
 _VERSION = "v1alpha1"
 _PLURAL = "seenfindings"
 _MESSAGE_MAX_CHARS = 1000
-_SEVERITY_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
 
 def _truncate(text: str | None, limit: int = _MESSAGE_MAX_CHARS) -> str:
@@ -27,7 +27,7 @@ def _truncate(text: str | None, limit: int = _MESSAGE_MAX_CHARS) -> str:
 def _highest_severity(entries: list[dict]) -> str:
     return max(
         (e.get("severity", "info") for e in entries),
-        key=lambda s: _SEVERITY_ORDER.get(s, 0),
+        key=lambda s: SEVERITY_ORDER.get(s, 0),
         default="info",
     )
 

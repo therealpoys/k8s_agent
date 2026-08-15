@@ -132,7 +132,7 @@ class TestEventsToFindings:
             result = plugin._events_to_findings(events, "falco")
 
         assert len(result) == 1
-        assert result[0].severity == "CRITICAL"
+        assert result[0].severity == "critical"
 
     def test_events_to_findings_maps_warning(self):
         plugin = _make_plugin()
@@ -142,7 +142,7 @@ class TestEventsToFindings:
             result = plugin._events_to_findings(events, "falco")
 
         assert len(result) == 1
-        assert result[0].severity == "HIGH"
+        assert result[0].severity == "warning"
 
     def test_events_to_findings_deduplicates_by_rule(self):
         plugin = _make_plugin()

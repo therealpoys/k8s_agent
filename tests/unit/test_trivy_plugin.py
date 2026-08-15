@@ -75,11 +75,11 @@ class TestTrivyPlugin:
         finding = plugin._report_to_finding(report, "default")
 
         assert finding is not None
-        assert finding.severity == "CRITICAL"
+        assert finding.severity == "critical"
         assert "2 kritische" in finding.message
         assert finding.namespace == "default"
         assert finding.fingerprint == "ReplicaSet/my-app-abc:my-container"
-        assert finding.identity == "ReplicaSet/my-app-abc"
+        assert finding.identity == "replicaset/my-app-abc"
 
     def test_report_to_finding_high_only(self):
         plugin = _make_plugin()
@@ -87,7 +87,16 @@ class TestTrivyPlugin:
         finding = plugin._report_to_finding(report, "default")
 
         assert finding is not None
-        assert finding.severity == "HIGH"
+        assert finding.severity == "warning"
+
+    def test_identity_lowercases_kind_from_label(self):
+        plugin = _make_plugin()
+        report = _make_report(critical=1)
+        report["metadata"]["labels"]["trivy-operator.resource.kind"] = "Pod"
+        finding = plugin._report_to_finding(report, "default")
+
+        assert finding is not None
+        assert finding.identity.startswith("pod/")
 
     def test_run_aggregates_multiple_namespaces(self):
         plugin = _make_plugin()

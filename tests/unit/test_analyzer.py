@@ -72,7 +72,7 @@ class TestFormatK8sEventsFinding:
             source="k8s_events",
             namespace="default",
             resource="pod/my-pod",
-            severity="HIGH",
+            severity="warning",
             message="FailedMount: unable to mount volume (3x)",
             timestamp=datetime(2026, 1, 1),
             raw={"reason": "FailedMount", "count": 3},

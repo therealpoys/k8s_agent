@@ -1,16 +1,30 @@
-# Current Feature
+# Current Feature: Schritt 20 — Severity- und Identity-Normalisierung über alle Plugins
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Neues Modul `src/severity.py` mit `INFO`/`WARNING`/`CRITICAL`, `VALID_SEVERITIES`, `SEVERITY_ORDER` als einzige Quelle der Wahrheit
+- `analyzer.py` und `dedup.py`: lokale `_VALID_SEVERITIES`/`_SEVERITY_ORDER`-Duplikate entfernen, durch Import aus `src.severity` ersetzen
+- Alle Plugins (`falco.py`, `k8s_events.py`, `prometheus.py`, `trivy.py`) auf lowercase 3-Stufen-Schema (`info`/`warning`/`critical`) umstellen; bisheriges `HIGH` → `warning`, `CRITICAL` bleibt `critical`; `pod_logs.py` bereits korrekt
+- Neuer Helper `resource_identity(kind, name) -> f"{kind.lower()}/{stable_name(name)}"` in `src/plugins/identity.py`, ersetzt die fünf leicht unterschiedlichen Ad-hoc-Identity-Konstruktionen in `pod_logs.py`, `k8s_events.py`, `trivy.py`, `falco.py`, `prometheus.py`
+- Ergebnis: derselbe physische Pod erzeugt unabhängig vom meldenden Plugin denselben `identity`-String (`pod/<stable_name>`) → korrekte Gruppierung zu einer `SeenFinding`-CR statt Fragmentierung
+- Tests: neues `tests/unit/test_identity.py`, Severity-/Identity-Assertions in bestehenden Plugin-Tests auf lowercase bzw. `pod/`-Präfix umstellen, neuer Dedup-Regressionstest für Cross-Plugin-Gruppierung, alle bestehenden Tests bleiben grün
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Root Cause (Review von `kubectl get sf -o yaml` am 2026-08-15): Severity uneinheitlich gecast (lowercase vs. uppercase auf demselben CR), `resource`-Spalte teils bare Name statt `kind/name`, dieselbe Resource erzeugt mehrere CRs statt einer — beides durch inkonsistente Plugin-Implementierungen seit Schritt 17 verursacht, kein Bug in `dedup.py`/`analyzer.py` selbst
+- `_highest_severity()` (in `analyzer.py` UND `dedup.py`, unabhängig dupliziert) mappt unbekannte Severity-Strings über `.get(s, 0)` auf Gewicht 0 → uppercase `CRITICAL` von Trivy/Falco wird bei der höchsten-Severity-Ermittlung faktisch wie `info` behandelt, sobald ein korrekt lowercase gesetztes Finding daneben steht — kein rein kosmetischer Bug
+- Kein viertes Severity-Level "high": LLM-Prompt-Vertrag (`<info|warning|critical>`) bleibt unverändert; Quellen, die bisher zwischen `HIGH`/`CRITICAL` unterschieden, mappen `HIGH` → `warning`
+- `k8s_events.py` fest auf `WARNING` (nicht konfigurierbar) — Plugin liest ausschließlich `field_selector="type=Warning"`, es gibt keine Grundlage für eine zweite Stufe ohne `reason`-Differenzierung
+- `resource_identity()` gehört in `identity.py` (nicht neues Modul) — inhaltlich Teil der bestehenden "Resource stabil identifizieren"-Zuständigkeit neben `stable_name()`
+- `Finding.resource` (Anzeige-Feld, roh/volatil) bleibt unangetastet — nur `identity` (Gruppierungs-Schlüssel) wird vereinheitlicht
+- Trivys `top_vulnerabilities`-Liste (`v.get("severity")`, rohes CVE-Format für Prompt-Zeile) ist NICHT `Finding.severity` und bleibt unverändert
+- **Breaking Change**: `_cr_name()` hasht `f"{namespace}|{identity}"` — geänderte Identity-Strings für `pod_logs`/`trivy` erzeugen neue CR-Namen, alte CRs werden zu Waisen. Vor nächstem `helm upgrade`: `kubectl delete sf --all -A`. Kein CRD-Schema-Change nötig
+- Bewusst nicht Teil dieses Schritts: viele Listen-Einträge pro CR (z.B. 17 Findings mit 17 Einzel-Recommendations) — bestehendes `_merge()`-Verhalten seit Schritt 17, eigene Design-Frage für später; wird durch bessere Identity-Gruppierung kurzfristig eher sichtbarer
+- Done when: `grep -rn '"HIGH"\|"CRITICAL"' src/plugins/*.py` liefert keine Treffer mehr als `Finding.severity`-Wert (Trivy-CVE-`raw`-Daten ausgenommen); alle Plugins erzeugen für denselben Pod denselben `identity`-Wert; alle Tests grün nach Fixture-Anpassung
 
 ## History
 

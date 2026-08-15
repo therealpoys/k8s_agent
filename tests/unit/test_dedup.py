@@ -7,6 +7,7 @@ from kubernetes.config import ConfigException
 
 from src.dedup import Deduplicator, _cr_name
 from src.models import Finding
+from src.plugins.identity import resource_identity
 
 
 def _make_dedup() -> Deduplicator:
@@ -157,6 +158,31 @@ class TestFilterNew:
         assert result == [finding_a, finding_b]
         dedup._api.create_namespaced_custom_object.assert_not_called()
         dedup._api.patch_namespaced_custom_object.assert_not_called()
+
+    def test_filter_new_groups_findings_from_different_plugins_with_same_pod_into_one_cr(self):
+        dedup = _make_dedup()
+        # Vor der Identity-Normalisierung lieferten Plugins unterschiedliche kind-Schreibweisen
+        # (z.B. k8s_events "Pod" vs. Trivy-Operator-Label "pod") — resource_identity() lowercased
+        # beide auf denselben String, wodurch sie hier in dieselbe Gruppe/CR fallen müssen.
+        finding_a = _make_finding(
+            source="k8s_events",
+            identity=resource_identity("Pod", "my-pod"),
+            fingerprint="Pod:my-pod:BackOff",
+        )
+        finding_b = _make_finding(
+            source="trivy",
+            identity=resource_identity("pod", "my-pod"),
+            fingerprint="pod/my-pod:app",
+        )
+        dedup._api.get_namespaced_custom_object.side_effect = ApiException(status=404)
+        dedup._api.patch_namespaced_custom_object.side_effect = ApiException(status=404)
+
+        result = dedup.filter_new([finding_a, finding_b])
+
+        assert result == [finding_a, finding_b]
+        dedup._api.create_namespaced_custom_object.assert_called_once()
+        body = dedup._api.create_namespaced_custom_object.call_args.args[-1]
+        assert body["spec"]["findingCount"] == 2
 
     def test_filter_new_skips_api_call_for_findings_without_namespace(self):
         dedup = _make_dedup()
