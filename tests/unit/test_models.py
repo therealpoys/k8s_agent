@@ -12,6 +12,7 @@ def _finding(**kwargs) -> Finding:
         timestamp=datetime(2026, 1, 1, 12, 0, 0),
         raw=None,
         fingerprint="pod/my-pod",
+        identity="my-pod",
     )
     return Finding(**{**defaults, **kwargs})
 

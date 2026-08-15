@@ -79,6 +79,7 @@ class K8sEventsPlugin(BasePlugin):
                     message=f"{reason}: {event.message} ({count}x)",
                     timestamp=timestamp,
                     fingerprint=f"{kind}:{stable_name(name)}:{reason}",
+                    identity=f"{kind.lower()}/{stable_name(name)}",
                     raw={
                         "kind": kind,
                         "name": name,

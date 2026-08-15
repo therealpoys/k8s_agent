@@ -1,16 +1,35 @@
-# Current Feature
+# Current Feature: Schritt 17 — SeenFinding-Aggregation pro Resource
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- `Finding` um neues Pflichtfeld `identity` erweitern (kein Default, wie `fingerprint`) — Gruppierungs-Schlüssel, eine Ebene gröber als `fingerprint`, stabil über Pod-Neustarts via `stable_name()`
+- Alle 5 Plugins auf `identity` umstellen:
+  - `pod_logs.py:176`: `stable_name(pod_name)`
+  - `k8s_events.py:81`: `f"{kind.lower()}/{stable_name(name)}"`
+  - `trivy.py:99`: `f"{kind}/{stable_name(resource_name)}"`
+  - `falco.py:141`: `f"pod/{stable_name(affected_pod)}" if affected_pod else "node/unknown"` (neuer `stable_name`-Import)
+  - `prometheus.py:65,81`: `fingerprint_resource` wiederverwenden
+- `deploy/helm/k8s-agent/templates/crd.yaml`: Schema von Flach- auf Listen-Struktur umstellen (`spec.findings[]` statt `spec.source`/`fingerprint`/`count` direkt); neue Top-Level-Felder `resource`, `severity`, `lastSeen`, `findingCount`; `additionalPrinterColumns` anpassen — **Breaking Change**, kein Migrationscode
+- `src/dedup.py` umbauen: Gruppierung nach `(namespace, identity)` statt `(source, namespace, fingerprint)`; `_merge()` für Listen-Einträge; `_highest_severity()`; `filter_new()` gibt vollen Kontext (alt+neu) zurück sobald sich in der Gruppe etwas ändert; `update_recommendations()` und `cleanup_resolved()` auf Listen-Granularität (Cleanup pro Eintrag, CR-Löschung nur wenn Liste leer)
+- `src/analyzer.py`: `identity=f.identity` beim Rekonstruieren von `Finding` in `enriched[idx] = Finding(...)` ergänzen (gleicher Bugtyp wie zuletzt bei `fingerprint`)
+- `src/graph.py` / RBAC / Config: keine Änderung nötig (Verschiebung passiert vollständig in `dedup.py`)
+- Tests: `tests/unit/test_dedup.py` größtenteils neu (Gruppierung, Merge, Fail-open, Recommendations-Patch, Cleanup pro Eintrag/CR, `_cr_name` Determinismus); alle bestehenden `Finding(...)`-Konstruktionen in Plugin-/Analyzer-/Console-/Graph-Tests um `identity=` ergänzen; je Plugin ein Test für korrekten `identity`-Wert (insbesondere Falco wegen neuem `stable_name`-Einsatz)
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Kontext: Ein Pod mit mehreren unabhängigen Findings (CrashLoop-Event, Restart-Count, Trivy-CVE) erzeugt aktuell 3 separate `SeenFinding`-CRs — unübersichtlich und fragmentiert den Kontext fürs LLM. Ziel: ein CR pro Resource mit `spec.findings` als Liste.
+- Zusätzlicher Zweck: Kontextverlust beheben — wenn eine Resource ein andauerndes Problem hat (z.B. dauerhaftes CrashLoop, gededupt) und danach ein neues Problem auftritt (z.B. neue CVE), soll das LLM den vollständigen aktuellen Findings-Stand der Resource sehen (alt+neu), nicht nur das neue Finding. Resourcen ohne Änderung erzeugen keinen Prompt-Text — weiterhin nur ein LLM-Call pro Durchlauf.
+- Wichtiger Fallstrick: `finding.resource` (Anzeige-Feld) bleibt volatil (Pod-Hash-Suffixe etc.) — deshalb NICHT für Gruppierung verwenden, sondern das neue `identity`-Feld (über `stable_name()` stabilisiert). Gleicher Bugtyp wie der `fingerprint`-Fix aus der letzten Bugfix-Runde, nur eine Ebene höher.
+- Designentscheidung: drittes Feld `identity` statt Wiederverwendung von `resource` (volatil) oder `fingerprint` (zu granular) — macht Anzeige/Gruppierung/Cross-Run-Identität explizit getrennt.
+- Designentscheidung: kein neuer LLM-Call pro Resource — bewusst abgelehnt, ein globaler Call pro Lauf bleibt bestehen.
+- Designentscheidung: Merge lässt im aktuellen Lauf nicht erneut auftauchende Einträge unangetastet im CR stehen (verschwinden erst über `cleanup_resolved()`), um Flackern zu vermeiden.
+- Designentscheidung: Cleanup pro Listen-Eintrag statt pro CR — ein chronisches Problem soll nicht ein längst gefixtes zweites Problem im selben CR am Leben halten.
+- Breaking CRD-Schema-Change bewusst ohne Migrationscode — `SeenFinding` ist reine Dedup-Bookkeeping-Infrastruktur ohne Wert über `dedup_lookback_minutes` hinaus. Vor `helm upgrade`: `kubectl delete sf --all -A`.
+- Referenz: vollständige Spec inkl. Code-Snippets für `dedup.py`/`crd.yaml` liegt in `context/prompts/step17_seenfinding_aggregation.md`.
 
 ## History
 

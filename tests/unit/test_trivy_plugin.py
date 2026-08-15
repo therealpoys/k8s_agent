@@ -79,6 +79,7 @@ class TestTrivyPlugin:
         assert "2 kritische" in finding.message
         assert finding.namespace == "default"
         assert finding.fingerprint == "ReplicaSet/my-app-abc:my-container"
+        assert finding.identity == "ReplicaSet/my-app-abc"
 
     def test_report_to_finding_high_only(self):
         plugin = _make_plugin()

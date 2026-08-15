@@ -24,6 +24,7 @@ def _make_finding() -> Finding:
         timestamp=datetime(2026, 1, 1),
         raw=None,
         fingerprint="my-pod",
+        identity="my-pod",
     )
 
 

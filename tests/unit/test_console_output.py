@@ -24,6 +24,7 @@ def _make_finding(
         timestamp=datetime(2024, 1, 15, 10, 29, 45),
         raw=None,
         fingerprint=resource,
+        identity=resource,
     )
 
 

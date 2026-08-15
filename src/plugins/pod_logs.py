@@ -174,6 +174,7 @@ class PodLogsPlugin(BasePlugin):
                             message=logs,
                             timestamp=datetime.utcnow(),
                             fingerprint=f"{stable_name(pod_name)}/{container}",
+                            identity=stable_name(pod_name),
                             raw={
                                 "pod_name": pod_name,
                                 "container": container,

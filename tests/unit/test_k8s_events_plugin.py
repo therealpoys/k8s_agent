@@ -177,6 +177,14 @@ class TestEventsToFindings:
 
         assert result[0].fingerprint == "Pod:my-pod:FailedMount"
 
+    def test_identity_is_kind_lower_and_stable_name(self):
+        plugin = _make_plugin()
+        events = [_make_event(kind="Pod", name="my-pod", reason="FailedMount")]
+
+        result = plugin._events_to_findings(events, "default")
+
+        assert result[0].identity == "pod/my-pod"
+
     def test_reporting_component_falls_back_to_source_when_unset(self):
         plugin = _make_plugin()
         events = [_make_event()]

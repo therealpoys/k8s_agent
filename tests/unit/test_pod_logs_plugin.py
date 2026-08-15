@@ -123,6 +123,7 @@ class TestRunHappyPath:
         assert isinstance(f.timestamp, datetime)
         assert f.raw["pod_name"] == "web-abc"
         assert f.fingerprint == "web-abc/app"
+        assert f.identity == "web-abc"
         assert f.raw["container"] == "app"
         assert f.raw["namespace"] == "default"
         assert f.raw["log_lines"] == 3

@@ -189,6 +189,22 @@ class TestAlertsToFindings:
 
         assert result[0].fingerprint == "PodCrashLooping:pod/my-pod"
 
+    def test_identity_is_fingerprint_resource(self):
+        plugin = PrometheusPlugin()
+        alerts = [_make_alert(alertname="PodCrashLooping", pod="my-pod")]
+
+        result = plugin._alerts_to_findings(alerts)
+
+        assert result[0].identity == "pod/my-pod"
+
+    def test_identity_falls_back_to_instance_without_pod(self):
+        plugin = PrometheusPlugin()
+        alerts = [_make_alert(instance="10.0.0.1:9100")]
+
+        result = plugin._alerts_to_findings(alerts)
+
+        assert result[0].identity == "10.0.0.1:9100"
+
     def test_finding_raw_contains_labels_and_annotations(self):
         plugin = PrometheusPlugin()
         alerts = [_make_alert(summary="something broke")]

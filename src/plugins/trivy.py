@@ -97,6 +97,7 @@ class TrivyPlugin(BasePlugin):
             message=message,
             timestamp=datetime.now(timezone.utc),
             fingerprint=f"{kind}/{stable_name(resource_name)}:{container}",
+            identity=f"{kind}/{stable_name(resource_name)}",
             raw={
                 "summary": summary,
                 "image": image,

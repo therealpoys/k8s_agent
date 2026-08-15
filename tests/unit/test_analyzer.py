@@ -21,6 +21,7 @@ def _make_finding(severity: str) -> Finding:
         timestamp=datetime(2026, 1, 1),
         raw=None,
         fingerprint="my-pod",
+        identity="my-pod",
     )
 
 
@@ -76,6 +77,7 @@ class TestFormatK8sEventsFinding:
             timestamp=datetime(2026, 1, 1),
             raw={"reason": "FailedMount", "count": 3},
             fingerprint="Pod:my-pod:FailedMount",
+            identity="pod/my-pod",
         )
 
         result = _format_k8s_events_finding(1, finding)
@@ -147,6 +149,19 @@ class TestAnalyzePerFindingEnrichment:
         assert enriched.severity == "critical"
         assert enriched.recommendation == "Bump memory limit."
         assert enriched.fingerprint == original.fingerprint
+
+    @patch("src.analyzer._build_llm")
+    def test_analyze_preserves_identity_field_when_enriching_findings(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "r", '
+            '"findings": [{"index": 1, "severity": "critical", "recommendation": "Bump memory limit."}]}'
+        )
+        original = _make_finding("info")
+
+        result = analyze([original])
+
+        enriched = result.findings[0]
+        assert enriched.identity == original.identity
 
     @patch("src.analyzer._build_llm")
     def test_out_of_range_index_is_ignored(self, mock_build):

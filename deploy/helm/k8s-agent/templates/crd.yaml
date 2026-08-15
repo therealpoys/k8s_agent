@@ -22,20 +22,28 @@ spec:
           properties:
             spec:
               type: object
-              required: [source, resource, fingerprint, lastSeen, count]
+              required: [resource, severity, lastSeen, findingCount, findings]
               properties:
-                source: {type: string}
                 resource: {type: string}
-                fingerprint: {type: string}
                 severity: {type: string}
-                message: {type: string}
-                recommendation: {type: string}
-                firstSeen: {type: string, format: date-time}
                 lastSeen: {type: string, format: date-time}
-                count: {type: integer}
+                findingCount: {type: integer}
+                findings:
+                  type: array
+                  items:
+                    type: object
+                    required: [source, fingerprint, lastSeen, count]
+                    properties:
+                      source: {type: string}
+                      fingerprint: {type: string}
+                      severity: {type: string}
+                      message: {type: string}
+                      recommendation: {type: string}
+                      firstSeen: {type: string, format: date-time}
+                      lastSeen: {type: string, format: date-time}
+                      count: {type: integer}
       additionalPrinterColumns:
-        - {name: Source, type: string, jsonPath: .spec.source}
         - {name: Resource, type: string, jsonPath: .spec.resource}
-        - {name: Count, type: integer, jsonPath: .spec.count}
+        - {name: Severity, type: string, jsonPath: .spec.severity}
+        - {name: Findings, type: integer, jsonPath: .spec.findingCount}
         - {name: LastSeen, type: string, jsonPath: .spec.lastSeen}
-        - {name: Recommendation, type: string, jsonPath: .spec.recommendation}

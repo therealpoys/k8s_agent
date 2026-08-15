@@ -185,6 +185,24 @@ class TestEventsToFindings:
 
         assert result[0].fingerprint == "Read sensitive file"
 
+    def test_identity_is_pod_with_stable_name_when_pod_present(self):
+        plugin = _make_plugin()
+        events = [_make_event(rule="Read sensitive file", priority="Warning", **{"k8s.pod.name": "myapp-7d9f8c6b5-xk2pl"})]
+
+        with patch("src.plugins.falco.config", _mock_config()):
+            result = plugin._events_to_findings(events, "falco")
+
+        assert result[0].identity == "pod/myapp"
+
+    def test_identity_falls_back_to_node_unknown_without_pod(self):
+        plugin = _make_plugin()
+        events = [_make_event(rule="Read sensitive file", priority="Warning")]
+
+        with patch("src.plugins.falco.config", _mock_config()):
+            result = plugin._events_to_findings(events, "falco")
+
+        assert result[0].identity == "node/unknown"
+
     def test_finding_message_includes_process_and_file(self):
         plugin = _make_plugin()
         events = [_make_event(rule="Shadow read", priority="Critical", **{"proc.name": "cat", "fd.name": "/etc/shadow"})]

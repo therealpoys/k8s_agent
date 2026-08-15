@@ -12,6 +12,7 @@ class Finding:
     timestamp: datetime
     raw: dict | None
     fingerprint: str
+    identity: str
     recommendation: str | None = None
 
 
