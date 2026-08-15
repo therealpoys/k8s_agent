@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 _VALID_SEVERITIES = {"info", "warning", "critical"}
 _SEVERITY_ORDER = {"info": 0, "warning": 1, "critical": 2}
 
+_FALLBACK_PREFIX = "No specific guidance from the LLM for this finding — see overall recommendation: "
+
 _PROMPT_TEMPLATE = """You are a Kubernetes observability agent. Analyze the following findings from a cluster and respond with a JSON object only — no markdown, no explanation.
 
 Findings come from different sources (pod logs, Prometheus alerts, Trivy vulnerability scans, Falco runtime alerts), each with a "Resource:" line identifying the affected pod or object.
@@ -283,6 +285,22 @@ def analyze(findings: list[Finding]) -> Alert:
                 identity=f.identity,
                 recommendation=finding_data.get("recommendation"),
             )
+
+        overall_recommendation = data["recommendation"]
+        for idx, f in enumerate(enriched):
+            if not f.recommendation:
+                enriched[idx] = Finding(
+                    source=f.source,
+                    namespace=f.namespace,
+                    resource=f.resource,
+                    severity=f.severity,
+                    message=f.message,
+                    timestamp=f.timestamp,
+                    raw=f.raw,
+                    fingerprint=f.fingerprint,
+                    identity=f.identity,
+                    recommendation=_FALLBACK_PREFIX + overall_recommendation,
+                )
 
         return Alert(
             findings=enriched,

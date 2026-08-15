@@ -1,16 +1,50 @@
-# Current Feature
+# Current Feature: Schritt 19 — Fallback-Recommendation bei unvollständiger LLM-Antwort
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- In `src/analyzer.py::analyze()` nach dem bestehenden Enrichment-Loop (der `per_finding`-Einträge auf `enriched` anwendet) einen zweiten Pass ergänzen
+- Jedes Finding in `enriched`, dessen `recommendation` nach dem ersten Pass weiterhin falsy ist (fehlender Index im LLM-`findings[]`-Array ODER leerer String), bekommt eine Fallback-Recommendation
+- Fallback-Text: `_FALLBACK_PREFIX + overall_recommendation` (Alert-weite `data["recommendation"]"`), mit `_FALLBACK_PREFIX = "No specific guidance from the LLM for this finding — see overall recommendation: "`
+- Zweiter Pass läuft **nur im Happy Path** (innerhalb des bestehenden `try`-Blocks nach erfolgreichem `json.loads`) — **nicht** in `_degraded_alert()`
+- Neue Tests in `tests/unit/test_analyzer.py`:
+  - `test_finding_without_llm_entry_gets_fallback_recommendation`
+  - `test_finding_with_empty_recommendation_string_gets_fallback`
+  - `test_finding_with_explicit_recommendation_keeps_it` (Regression)
+  - `test_degraded_mode_does_not_apply_fallback_text`
+- Bestehende Tests bleiben grün
 
 ## Notes
 
-<!-- Populated by /feature load -->
+Vollständiger Spec-Text: `context/prompts/step19_recommendation_fallback.md`.
+
+**Root Cause:** Bei großen LLM-Batches (z.B. 52 Findings in einem Call, verursacht durch den
+Schritt-17-Full-Context-Resend) hält das lokale Ollama-Modell (`qwen3.6:35b-a3b-q4_K_M`) die
+Prompt-Regel "ein Recommendation-Eintrag pro Finding" nicht zuverlässig ein. Fehlt ein Index im
+`findings[]`-Array der LLM-Antwort (oder taucht dort ohne/mit leerem `recommendation` auf), bleibt
+`Finding.recommendation` dauerhaft leer, da `Deduplicator.update_recommendations()` nur Findings
+mit truthy `recommendation` patcht (`if f.recommendation:`).
+
+**Designentscheidungen:**
+- Fallback = Alert-weite Recommendation statt generischem Static-String — informativer, kein
+  zweiter Text zu pflegen
+- Kennzeichnungs-Präfix statt stillem Reuse — macht in `kubectl get sf -o yaml` und Konsolen-
+  Ausgabe sofort erkennbar, dass keine finding-spezifische LLM-Analyse stattfand
+- Nur Happy Path, nicht Degraded Mode — Degraded Mode kommuniziert den kompletten LLM-Ausfall
+  bereits klar auf Alert-Ebene (`summary="LLM analysis unavailable"`); derselbe Fallback-Text in
+  jedem Finding würde die Unterscheidung "LLM teilweise geantwortet" vs. "LLM komplett ausgefallen"
+  verwischen
+- Fix in `analyzer.py`, nicht in `dedup.py` — hält die Garantie "ein Finding, das den Analyzer
+  erfolgreich durchlaufen hat, hat immer eine `recommendation`" an einer Stelle; `dedup.py` und
+  `console.py` brauchen keine Sonderbehandlung für leere Recommendations
+
+**Keine Änderung nötig** an `src/dedup.py` oder `src/graph.py`.
+
+**Done when:** Kein Finding, dessen Run erfolgreich (Happy Path) durch den Analyzer lief, landet
+mit leerer `recommendation` in einem `SeenFinding`-CR oder in der Konsolen-Ausgabe.
 
 ## History
 

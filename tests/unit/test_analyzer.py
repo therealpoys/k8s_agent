@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.models import Alert, Finding
-from src.analyzer import _format_k8s_events_finding, _highest_severity, analyze
+from src.analyzer import _FALLBACK_PREFIX, _format_k8s_events_finding, _highest_severity, analyze
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +105,8 @@ class TestAnalyzeHappyPath:
         assert result.severity == "warning"
         assert result.summary == "Something is off."
         assert result.recommendation == "Check the pod."
-        assert result.findings == findings
+        assert result.findings[0].fingerprint == findings[0].fingerprint
+        assert result.findings[0].recommendation == _FALLBACK_PREFIX + "Check the pod."
         assert isinstance(result.generated_at, datetime)
 
     @patch("src.analyzer._build_llm")
@@ -174,7 +175,9 @@ class TestAnalyzePerFindingEnrichment:
         result = analyze([original])
 
         assert result.summary == "s"
-        assert result.findings[0] == original
+        assert result.findings[0].fingerprint == original.fingerprint
+        assert result.findings[0].severity == original.severity
+        assert result.findings[0].recommendation == _FALLBACK_PREFIX + "r"
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +205,55 @@ class TestAnalyzeInvalidSeverity:
             analyze([])
 
         assert any("invalid severity" in r.message.lower() for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# analyze — fallback recommendation for incomplete LLM responses
+# ---------------------------------------------------------------------------
+
+class TestAnalyzeFallbackRecommendation:
+    @patch("src.analyzer._build_llm")
+    def test_finding_without_llm_entry_gets_fallback_recommendation(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "Restart the pod.", '
+            '"findings": [{"index": 1, "severity": "warning", "recommendation": "Bump memory limit."}]}'
+        )
+        findings = [_make_finding("warning"), _make_finding("critical")]
+
+        result = analyze(findings)
+
+        assert result.findings[0].recommendation == "Bump memory limit."
+        assert result.findings[1].recommendation == _FALLBACK_PREFIX + "Restart the pod."
+
+    @patch("src.analyzer._build_llm")
+    def test_finding_with_empty_recommendation_string_gets_fallback(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "Restart the pod.", '
+            '"findings": [{"index": 1, "severity": "warning", "recommendation": ""}]}'
+        )
+
+        result = analyze([_make_finding("warning")])
+
+        assert result.findings[0].recommendation == _FALLBACK_PREFIX + "Restart the pod."
+
+    @patch("src.analyzer._build_llm")
+    def test_finding_with_explicit_recommendation_keeps_it(self, mock_build):
+        mock_build.return_value.invoke.return_value = _make_llm_response(
+            '{"severity": "warning", "summary": "s", "recommendation": "Restart the pod.", '
+            '"findings": [{"index": 1, "severity": "warning", "recommendation": "Bump memory limit."}]}'
+        )
+
+        result = analyze([_make_finding("warning")])
+
+        assert result.findings[0].recommendation == "Bump memory limit."
+
+    @patch("src.analyzer._build_llm")
+    def test_degraded_mode_does_not_apply_fallback_text(self, mock_build):
+        mock_build.return_value.invoke.side_effect = Exception("timeout")
+
+        result = analyze([_make_finding("warning")])
+
+        assert result.findings[0].recommendation is None
 
 
 # ---------------------------------------------------------------------------
