@@ -1,16 +1,26 @@
-# Current Feature
+# Current Feature: Schritt 18 — Event-Pagination
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- `K8sEventsPlugin._namespace_findings` (`src/plugins/k8s_events.py`) paginiert über `list_namespaced_event` mittels `limit`/`_continue` statt einer einzigen unlimitierten Anfrage
+- `_PAGE_SIZE = 200` als Modulkonstante; jede Seite fordert `limit=_PAGE_SIZE` an
+- Schleife sammelt Events über alle Seiten, bis kein `continue_token` (`response.metadata._continue`) mehr zurückkommt
+- Scheitert eine spätere Seite (z.B. transientes 403 nach erfolgreicher erster Seite), werden bereits gesammelte Events trotzdem zu Findings verarbeitet statt verworfen
+- Scheitert bereits die erste Seite, bleibt das Verhalten identisch zu vorher: Fehlerbehandlung (401/403/404/generisch) loggt und liefert `[]`
+- Neue Tests: `test_namespace_findings_follows_continue_token`, `test_namespace_findings_passes_limit_param`, `test_namespace_findings_stops_when_continue_token_empty`, `test_namespace_findings_returns_partial_results_on_mid_pagination_error`
+- Bestehende Tests (u.a. `test_run_returns_empty_on_403`/`_404`) bleiben grün
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Scope bewusst nur `k8s_events.py`/`list_namespaced_event` — größtes Risiko durch potenziell sehr viele Events pro Namespace über Zeit; `pod_logs.py`/`list_namespaced_pod` bleibt außen vor (Pod-Anzahl typischerweise viel kleiner), Muster kann später 1:1 übertragen werden
+- `_continue` (mit Unterstrich) ist die Python-Client-Konvention für den API-Parameter `continue`, da `continue` ein reserviertes Schlüsselwort ist
+- `limit=200`: klein genug für handhabbare Einzel-Responses, groß genug dass die meisten Namespaces in einer Seite durchlaufen
+- Referenz-Implementierung für `_namespace_findings` ist im Spec-Prompt vollständig ausformuliert (`context/prompts/step18_event_pagination.md:35-67`)
+- Done when: ein Namespace mit mehr als `_PAGE_SIZE` Warning-Events liefert vollständige Findings über alle Seiten hinweg, ohne dass eine einzelne API-Antwort mehr als `_PAGE_SIZE` Items enthält; bestehendes Fehlerverhalten bleibt für den Fall erhalten, dass bereits die erste Seite fehlschlägt
 
 ## History
 

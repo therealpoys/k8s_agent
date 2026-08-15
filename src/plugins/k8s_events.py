@@ -11,6 +11,8 @@ from src.plugins.identity import stable_name
 
 logger = logging.getLogger(__name__)
 
+_PAGE_SIZE = 200
+
 
 class K8sEventsPlugin(BasePlugin):
     name = "k8s_events"
@@ -29,25 +31,36 @@ class K8sEventsPlugin(BasePlugin):
         return findings
 
     def _namespace_findings(self, namespace: str) -> list[Finding]:
-        try:
-            events = self._core.list_namespaced_event(
-                namespace,
-                field_selector="type=Warning",
-                timeout_seconds=10,
-            ).items
-        except ApiException as exc:
-            if exc.status in (401, 403):
-                logger.error(
-                    "Zugriff verweigert beim Abrufen von Events in Namespace '%s': %s",
-                    namespace, exc,
+        events: list = []
+        continue_token: str | None = None
+
+        while True:
+            try:
+                response = self._core.list_namespaced_event(
+                    namespace,
+                    field_selector="type=Warning",
+                    timeout_seconds=10,
+                    limit=_PAGE_SIZE,
+                    _continue=continue_token,
                 )
-            elif exc.status == 404:
-                logger.debug("Namespace '%s' nicht gefunden", namespace)
-            else:
-                logger.warning(
-                    "Fehler beim Abrufen von Events in Namespace '%s': %s", namespace, exc
-                )
-            return []
+            except ApiException as exc:
+                if exc.status in (401, 403):
+                    logger.error(
+                        "Zugriff verweigert beim Abrufen von Events in Namespace '%s': %s",
+                        namespace, exc,
+                    )
+                elif exc.status == 404:
+                    logger.debug("Namespace '%s' nicht gefunden", namespace)
+                else:
+                    logger.warning(
+                        "Fehler beim Abrufen von Events in Namespace '%s': %s", namespace, exc
+                    )
+                return self._events_to_findings(events, namespace) if events else []
+
+            events.extend(response.items)
+            continue_token = response.metadata._continue
+            if not continue_token:
+                break
 
         return self._events_to_findings(events, namespace)
 

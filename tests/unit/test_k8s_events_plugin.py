@@ -20,6 +20,12 @@ def _mock_config(namespaces: list[str] = None) -> MagicMock:
     return cfg
 
 
+def _make_response(items: list, continue_token: str | None = None) -> MagicMock:
+    response = MagicMock(items=items)
+    response.metadata._continue = continue_token
+    return response
+
+
 def _make_event(
     kind: str = "Pod",
     name: str = "my-pod",
@@ -46,7 +52,7 @@ def _make_event(
 class TestK8sEventsPluginRun:
     def test_run_returns_empty_when_no_events(self):
         plugin = _make_plugin()
-        plugin._core.list_namespaced_event.return_value = MagicMock(items=[])
+        plugin._core.list_namespaced_event.return_value = _make_response(items=[])
 
         with patch("src.plugins.k8s_events.config", _mock_config()):
             result = plugin.run()
@@ -73,7 +79,7 @@ class TestK8sEventsPluginRun:
 
     def test_run_queries_all_configured_namespaces(self):
         plugin = _make_plugin()
-        plugin._core.list_namespaced_event.return_value = MagicMock(items=[])
+        plugin._core.list_namespaced_event.return_value = _make_response(items=[])
 
         with patch("src.plugins.k8s_events.config", _mock_config(namespaces=["a", "b"])):
             plugin.run()
@@ -85,8 +91,8 @@ class TestK8sEventsPluginRun:
 
     def test_run_aggregates_across_namespaces(self):
         plugin = _make_plugin()
-        events_a = MagicMock(items=[_make_event(name="pod-a", reason="FailedMount")])
-        events_b = MagicMock(items=[_make_event(name="pod-b", reason="FailedScheduling")])
+        events_a = _make_response(items=[_make_event(name="pod-a", reason="FailedMount")])
+        events_b = _make_response(items=[_make_event(name="pod-b", reason="FailedScheduling")])
         plugin._core.list_namespaced_event.side_effect = [events_a, events_b]
 
         with patch("src.plugins.k8s_events.config", _mock_config(namespaces=["ns-a", "ns-b"])):
@@ -94,6 +100,47 @@ class TestK8sEventsPluginRun:
 
         assert len(result) == 2
         assert {f.namespace for f in result} == {"ns-a", "ns-b"}
+
+    def test_namespace_findings_follows_continue_token(self):
+        plugin = _make_plugin()
+        event_a = _make_event(name="pod-a", reason="FailedMount")
+        event_b = _make_event(name="pod-b", reason="FailedScheduling")
+        page_1 = _make_response(items=[event_a], continue_token="token-1")
+        page_2 = _make_response(items=[event_b], continue_token=None)
+        plugin._core.list_namespaced_event.side_effect = [page_1, page_2]
+
+        result = plugin._namespace_findings("default")
+
+        assert len(result) == 2
+        assert plugin._core.list_namespaced_event.call_count == 2
+
+    def test_namespace_findings_passes_limit_param(self):
+        plugin = _make_plugin()
+        page_1 = _make_response(items=[_make_event()], continue_token="token-1")
+        page_2 = _make_response(items=[], continue_token=None)
+        plugin._core.list_namespaced_event.side_effect = [page_1, page_2]
+
+        plugin._namespace_findings("default")
+
+        for call in plugin._core.list_namespaced_event.call_args_list:
+            assert call.kwargs["limit"] == 200
+
+    def test_namespace_findings_stops_when_continue_token_empty(self):
+        plugin = _make_plugin()
+        plugin._core.list_namespaced_event.return_value = _make_response(items=[_make_event()])
+
+        plugin._namespace_findings("default")
+
+        assert plugin._core.list_namespaced_event.call_count == 1
+
+    def test_namespace_findings_returns_partial_results_on_mid_pagination_error(self):
+        plugin = _make_plugin()
+        page_1 = _make_response(items=[_make_event(name="pod-a")], continue_token="token-1")
+        plugin._core.list_namespaced_event.side_effect = [page_1, ApiException(status=500)]
+
+        result = plugin._namespace_findings("default")
+
+        assert len(result) == 1
 
 
 class TestEventsToFindings:

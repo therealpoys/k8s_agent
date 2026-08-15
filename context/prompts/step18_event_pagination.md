@@ -1,4 +1,4 @@
-# Prompt — Schritt 17: Pagination für `list_namespaced_event`
+# Prompt — Schritt 18: Pagination für `list_namespaced_event`
 
 ## Kontext
 
